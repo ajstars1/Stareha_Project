@@ -19,6 +19,8 @@ from packages.permissions import can_collect, list_permissions
 from packages.collectors.terminal.history_scanner import scan_history
 from packages.collectors.terminal.hook_receiver import start_receiver
 from packages.collectors.files.watcher import start_watcher
+from packages.collectors.claude_code import scan_claude_code
+from packages.collectors.browser import scan_browser_history
 
 PID_PATH = Path.home() / ".stareha" / "daemon.pid"
 
@@ -52,10 +54,18 @@ def run() -> None:
     threads: list[threading.Thread] = []
     stop_event = threading.Event()
 
-    # Always scan history on start
+    # Scan all permitted sources on start
     if can_collect("terminal"):
         imported = scan_history(store)
-        print(f"[stareha] imported {imported} history events", flush=True)
+        print(f"[stareha] terminal: {imported} history events", flush=True)
+
+    if can_collect("claude_code"):
+        imported = scan_claude_code(store)
+        print(f"[stareha] claude_code: {imported} sessions", flush=True)
+
+    if can_collect("browser"):
+        imported = scan_browser_history(store)
+        print(f"[stareha] browser: {imported} history events", flush=True)
 
     # Start live hook receiver
     if can_collect("terminal"):

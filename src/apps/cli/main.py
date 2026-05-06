@@ -66,6 +66,42 @@ def _systemctl(*args: str) -> subprocess.CompletedProcess:
     return subprocess.run(["systemctl", "--user", *args], capture_output=True, text=True)
 
 
+def _service_file_installed() -> bool:
+    return (Path.home() / ".config" / "systemd" / "user" / "stareha.service").exists()
+
+
+def _start_daemon_direct() -> bool:
+    """Launch the daemon as a detached background process (no systemd required)."""
+    daemon_script = Path(__file__).resolve().parents[1] / "daemon" / "main.py"
+    if not daemon_script.exists():
+        return False
+    proc = subprocess.Popen(
+        [sys.executable, str(daemon_script)],
+        start_new_session=True,      # detach — survives when CLI exits
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+    )
+    # Give it a moment to write the PID file
+    for _ in range(10):
+        time.sleep(0.3)
+        if _daemon_pid():
+            return True
+    return False
+
+
+def _stop_daemon_direct() -> bool:
+    """Kill the daemon process directly via its PID file."""
+    pid = _daemon_pid()
+    if not pid:
+        return False
+    try:
+        import signal as _signal
+        os.kill(pid, _signal.SIGTERM)
+        return True
+    except Exception:
+        return False
+
+
 def _uptime(pid: int) -> str:
     try:
         stat = Path(f"/proc/{pid}/stat").read_text().split()
@@ -111,12 +147,41 @@ def init():
         console.print(f"[green]✓[/green] Watching {path}")
 
     # Claude Code
-    if click.confirm("Enable Claude Code history (reads AI session history)?", default=True):
-        enable_source("claude_code")
-        console.print("[green]✓[/green] Claude Code enabled")
+    from pathlib import Path as _P
+    claude_dir = _P.home() / ".claude" / "projects"
+    if claude_dir.exists():
+        if click.confirm("Enable Claude Code history (reads AI session history from ~/.claude/)?", default=True):
+            enable_source("claude_code")
+            console.print("[green]✓[/green] Claude Code enabled")
+    else:
+        console.print("[dim]Claude Code not found — skipping (install Claude Code CLI to enable)[/dim]")
 
-    # Install systemd service
-    _install_systemd_service()
+    # Browser history
+    from packages.collectors.browser import _CHROME_PATHS, _find_firefox_profiles
+    chrome_found = any(p.exists() for p in _CHROME_PATHS)
+    firefox_found = bool(_find_firefox_profiles())
+    browsers = []
+    if chrome_found:
+        browsers.append("Chrome/Chromium")
+    if firefox_found:
+        browsers.append("Firefox")
+
+    if browsers:
+        browser_str = " + ".join(browsers)
+        if click.confirm(
+            f"Enable browser history ({browser_str} — reads local SQLite, no extension needed)?",
+            default=False
+        ):
+            enable_source("browser")
+            console.print(f"[green]✓[/green] Browser history enabled ({browser_str})")
+    else:
+        console.print("[dim]No supported browser found — skipping[/dim]")
+
+    # Install systemd service (optional)
+    try:
+        _install_systemd_service()
+    except Exception:
+        console.print("[dim]systemd not available — daemon will start directly[/dim]")
 
     console.print("\n[bold green]Setup complete.[/bold green] Run [bold]stareha start[/bold] to begin.")
 
@@ -154,31 +219,42 @@ def _install_systemd_service() -> None:
 
 @cli.command()
 def start():
-    """Start the Stareha daemon."""
+    """Start the Stareha daemon (systemd if available, direct process otherwise)."""
     if _daemon_pid():
         console.print("[yellow]Daemon is already running.[/yellow]")
         return
-    _systemctl("start", "stareha")
-    time.sleep(1)
-    if _daemon_pid():
+
+    if _service_file_installed():
+        _systemctl("start", "stareha")
+        time.sleep(1.5)
+        if _daemon_pid():
+            console.print("[green]✓[/green] Stareha started (systemd).")
+            return
+        console.print("[dim]systemd start failed — trying direct launch...[/dim]")
+
+    if _start_daemon_direct():
         console.print("[green]✓[/green] Stareha started.")
     else:
-        console.print("[red]Failed to start daemon. Check: journalctl --user -u stareha -n 20[/red]")
+        console.print("[red]Failed to start daemon.[/red]")
+        console.print("[dim]Run `stareha init` to set up systemd, or check Python path.[/dim]")
 
 
 @cli.command()
 def stop():
     """Stop the Stareha daemon."""
-    _systemctl("stop", "stareha")
+    if _service_file_installed():
+        _systemctl("stop", "stareha")
+    _stop_daemon_direct()
     console.print("[yellow]●[/yellow] Stareha stopped.")
 
 
 @cli.command()
 def restart():
     """Restart the Stareha daemon."""
-    _systemctl("restart", "stareha")
-    time.sleep(1)
-    console.print("[green]✓[/green] Stareha restarted.")
+    ctx = click.get_current_context()
+    ctx.invoke(stop)
+    time.sleep(0.5)
+    ctx.invoke(start)
 
 
 # ── stareha daemon (internal — called by systemd) ────────────────────────────

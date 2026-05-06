@@ -328,6 +328,141 @@ def extract_project_context(events: list[dict]) -> list[dict]:
     return candidates
 
 
+# ── Browser extractors ────────────────────────────────────────────────────────
+
+def extract_research_topics(events: list[dict]) -> list[dict]:
+    """
+    Frequent browser searches → research_topic candidates.
+    Groups search queries and domain visits to identify what the user is researching.
+    """
+    from collections import Counter
+    search_counts: Counter = Counter()
+    search_evidence: dict = defaultdict(list)
+
+    domain_counts: Counter = Counter()
+    domain_evidence: dict = defaultdict(list)
+
+    for e in events:
+        if e.get("source") != "browser":
+            continue
+        try:
+            data = json.loads(e.get("content", "{}"))
+        except Exception:
+            continue
+
+        if e.get("type") == "browser_search":
+            query = data.get("query", "").strip().lower()
+            if query and len(query) > 2:
+                search_counts[query] += 1
+                search_evidence[query].append(e["id"])
+
+        elif e.get("type") == "browser_visit":
+            url = data.get("url", "")
+            title = data.get("title", "")
+            try:
+                from urllib.parse import urlparse
+                domain = urlparse(url).netloc.lstrip("www.")
+                if domain and "." in domain:
+                    domain_counts[domain] += 1
+                    domain_evidence[domain].append(e["id"])
+            except Exception:
+                pass
+
+    candidates = []
+    seen = set()
+
+    # Repeated search queries (3+)
+    for query, count in search_counts.most_common():
+        if count < 3:
+            break
+        if query in seen:
+            continue
+        seen.add(query)
+        content = f'You searched for "{query}" {count} times.'
+        candidates.append({
+            "type": "research_topic",
+            "source": "browser",
+            "project": None,
+            "content": content,
+            "evidence_ids": json.dumps(search_evidence[query][:10]),
+            "confidence": _confidence(count, base=0.65),
+            "sensitivity": "normal",
+            "model_used": "pattern_extractor",
+        })
+
+    # Frequently visited domains (5+)
+    for domain, count in domain_counts.most_common():
+        if count < 5:
+            break
+        if domain in seen:
+            continue
+        seen.add(domain)
+        content = f'You frequently visit {domain} ({count} times).'
+        candidates.append({
+            "type": "research_topic",
+            "source": "browser",
+            "project": None,
+            "content": content,
+            "evidence_ids": json.dumps(domain_evidence[domain][:10]),
+            "confidence": _confidence(count, base=0.60, scale_at=20),
+            "sensitivity": "low",
+            "model_used": "pattern_extractor",
+        })
+
+    return candidates
+
+
+def extract_claude_code_patterns(events: list[dict]) -> list[dict]:
+    """
+    Claude Code sessions → decision and project_context candidates.
+    Surfaces what topics were discussed most.
+    """
+    from collections import Counter
+    topic_counts: Counter = Counter()
+    topic_evidence: dict = defaultdict(list)
+
+    for e in events:
+        if e.get("source") != "claude_code":
+            continue
+        try:
+            data = json.loads(e.get("content", "{}"))
+        except Exception:
+            continue
+
+        project = data.get("project", "")
+        first_msg = data.get("first_message", "").strip()
+        if not first_msg or len(first_msg) < 10:
+            continue
+
+        # Use first 60 chars as the topic key
+        topic_key = first_msg[:60].lower()
+        topic_counts[topic_key] += 1
+        topic_evidence[topic_key].append(e["id"])
+
+    candidates = []
+    seen = set()
+
+    for topic, count in topic_counts.most_common():
+        if count < 2:
+            break
+        if topic in seen:
+            continue
+        seen.add(topic)
+        content = f'You repeatedly discussed with Claude: "{topic[:80]}" ({count} sessions).'
+        candidates.append({
+            "type": "decision",
+            "source": "claude_code",
+            "project": None,
+            "content": content,
+            "evidence_ids": json.dumps(topic_evidence[topic][:10]),
+            "confidence": _confidence(count, base=0.65, scale_at=8),
+            "sensitivity": "normal",
+            "model_used": "pattern_extractor",
+        })
+
+    return candidates
+
+
 # ── Entry point ───────────────────────────────────────────────────────────────
 
 def run_all(events: list[dict]) -> list[dict]:
@@ -337,4 +472,6 @@ def run_all(events: list[dict]) -> list[dict]:
     results.extend(extract_command_sequences(events))
     results.extend(extract_error_fix_pairs(events))
     results.extend(extract_project_context(events))
+    results.extend(extract_research_topics(events))
+    results.extend(extract_claude_code_patterns(events))
     return results
