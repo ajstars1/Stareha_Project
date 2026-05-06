@@ -1,0 +1,71 @@
+# Connectors — Overview
+
+**Status:** Concept  
+**Stage:** 1–7 (each connector has its own stage)
+
+---
+
+## What Are Connectors
+
+Connectors are the data inputs to the learning system. Each connector reads from a specific source, applies redaction, and sends structured events to the event store.
+
+Every connector requires explicit permission before it runs.
+
+---
+
+## Connector Index
+
+| Connector | File | Stage | What it reads |
+|-----------|------|-------|--------------|
+| Terminal | [terminal.md](terminal.md) | 1 | Shell command history |
+| File Watcher | [file-watcher.md](file-watcher.md) | 1 | Project file changes |
+| Claude Code | [claude-code.md](claude-code.md) | 2 | AI session history, CLAUDE.md |
+| Browser | [browser.md](browser.md) | 7 | Research sessions, tabs |
+
+---
+
+## Connector Interface
+
+Every connector must implement:
+
+```typescript
+interface Connector {
+  name: string
+  requiredPermission: string
+
+  isAvailable(): boolean          // check if source exists/is accessible
+  collect(since: Date): Event[]   // pull events since last collection
+  redact(event: Event): Event     // strip sensitive content
+}
+```
+
+---
+
+## How Connectors Are Added
+
+To add a new connector:
+1. Create a new file in `connectors/` with a full report
+2. Add it to this README table
+3. Add it to [SITEMAP.md](../../../SITEMAP.md)
+4. Add its permission scope to the permission system
+5. Implement the interface in the codebase
+
+---
+
+## Connector Rules
+
+- Never store raw output — always redact before storing
+- Connectors run at fixed intervals or on session events, not continuously
+- If a connector fails, log the error and continue — never block the system
+- Connectors are independently enable/disable-able
+
+---
+
+## Planned Future Connectors
+
+| Connector | Stage | What it would read |
+|-----------|-------|-------------------|
+| IDE (VS Code) | 6 | Active file, errors, extensions |
+| Git | 2 | Commits, branch changes, PR activity |
+| Calendar | 8 | Meeting context, work blocks |
+| Slack/Discord | 8 | Work communication patterns |
