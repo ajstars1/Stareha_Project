@@ -9,10 +9,77 @@
 
 | File | What it covers |
 |------|---------------|
-| [README.md](README.md) | Project overview, what Stareha is, current stage, stack |
-| [CLAUDE.md](CLAUDE.md) | Claude rules — documentation law, practices, skills map |
+| [README.md](README.md) | Project overview, installation, command reference, contributing |
+| [LICENSE](LICENSE) | MIT license |
+| [CLAUDE.md](CLAUDE.md) | AI assistant rules — documentation law, practices, skills map |
 | [SITEMAP.md](SITEMAP.md) | This file — master navigation |
-| [.gitignore](.gitignore) | Keeps `src/` and `reference/` local; never pushed |
+| [.gitignore](.gitignore) | Ignores runtime data (databases, bytecode, secrets) |
+
+---
+
+## Source Code (`src/`)
+
+### Entry points
+
+| File | What it covers |
+|------|---------------|
+| [src/pyproject.toml](src/pyproject.toml) | Package config, dependencies, scripts (`stareha` CLI entry point) |
+| [src/apps/cli/main.py](src/apps/cli/main.py) | `stareha` CLI — all commands built with Click + Rich |
+| [src/apps/daemon/main.py](src/apps/daemon/main.py) | Background daemon — starts collectors, manages threads |
+| [src/apps/daemon/stareha.service](src/apps/daemon/stareha.service) | systemd user service template |
+
+### Core packages
+
+| File | What it covers |
+|------|---------------|
+| [src/packages/core/config/\_\_init\_\_.py](src/packages/core/config/__init__.py) | Config loader — `~/.stareha/config.json` with defaults |
+| [src/packages/core/db/\_\_init\_\_.py](src/packages/core/db/__init__.py) | SQLite store — write_event, sessions, meta, migrations |
+| [src/packages/core/db/schema.sql](src/packages/core/db/schema.sql) | Canonical schema — events, sessions, memories, candidates, ledger |
+
+### Collectors
+
+| File | What it covers |
+|------|---------------|
+| [src/packages/collectors/terminal/history\_scanner.py](src/packages/collectors/terminal/history_scanner.py) | Scans `~/.zsh_history` / `~/.bash_history` on daemon start |
+| [src/packages/collectors/terminal/hook\_receiver.py](src/packages/collectors/terminal/hook_receiver.py) | HTTP server on port 7431 — receives live shell hook events |
+| [src/packages/collectors/files/watcher.py](src/packages/collectors/files/watcher.py) | inotify-based file watcher — fires `file_edit` events |
+
+### Intelligence
+
+| File | What it covers |
+|------|---------------|
+| [src/packages/intelligence/scripts/pattern\_extractor.py](src/packages/intelligence/scripts/pattern_extractor.py) | Deterministic extractors — frequency, sequences, error-fix, project context |
+| [src/packages/intelligence/learning\_runner.py](src/packages/intelligence/learning_runner.py) | Orchestrates extraction — dedup, feedback gate, writes candidates |
+| [src/packages/intelligence/ledger.py](src/packages/intelligence/ledger.py) | Learning run tracking — `what_did_you_learn`, feedback stats |
+| [src/packages/intelligence/router.py](src/packages/intelligence/router.py) | **Policy router** — scripts → local LLM → cloud LLM |
+| [src/packages/intelligence/local\_llm/\_\_init\_\_.py](src/packages/intelligence/local_llm/__init__.py) | Ollama HTTP client — generate, chat, pull, is_available |
+| [src/packages/intelligence/cloud\_llm/\_\_init\_\_.py](src/packages/intelligence/cloud_llm/__init__.py) | Claude API client — generate, chat, is_available |
+| [src/packages/intelligence/prompts.py](src/packages/intelligence/prompts.py) | Prompt template manager — bundled defaults + user-editable |
+| [src/packages/intelligence/summarizer.py](src/packages/intelligence/summarizer.py) | Session summary + memory enrichment via router |
+
+### Memory
+
+| File | What it covers |
+|------|---------------|
+| [src/packages/memory/manager.py](src/packages/memory/manager.py) | approve, reject, forget, why, list, search, sources — all memory ops |
+
+### Guidance
+
+| File | What it covers |
+|------|---------------|
+| [src/packages/guidance/detector.py](src/packages/guidance/detector.py) | Weak concept detection — notes, error-fix, failures, session goals |
+| [src/packages/guidance/briefing.py](src/packages/guidance/briefing.py) | Work + learning briefing builder (deterministic) |
+| [src/packages/guidance/quiz.py](src/packages/guidance/quiz.py) | Quiz generation via router + interactive CLI runner |
+| [src/packages/guidance/prep.py](src/packages/guidance/prep.py) | Guidance orchestrator — prep, store, deliver |
+
+### Shared
+
+| File | What it covers |
+|------|---------------|
+| [src/packages/shared/redact.py](src/packages/shared/redact.py) | Secret/token redaction — runs before any event is stored |
+| [src/packages/shared/retry.py](src/packages/shared/retry.py) | Jittered exponential backoff for external calls |
+| [src/packages/permissions/\_\_init\_\_.py](src/packages/permissions/__init__.py) | Opt-in source permissions — `can_collect()` gates all collectors |
+| [src/packages/notification/\_\_init\_\_.py](src/packages/notification/__init__.py) | Desktop notifications via notify-send |
 
 ---
 

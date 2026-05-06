@@ -1,0 +1,16 @@
+[Unit]
+Description=Stareha AI Companion Daemon
+Documentation=https://github.com/ajstars1/Stareha_Project
+After=default.target
+
+[Service]
+Type=simple
+ExecStart=%h/.local/bin/stareha daemon
+Restart=on-failure
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+Environment=PYTHONUNBUFFERED=1
+
+[Install]
+WantedBy=default.target

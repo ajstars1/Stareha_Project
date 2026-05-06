@@ -1,0 +1,207 @@
+"""
+Quiz generation and interactive runner — Stage 4/5.
+
+Generation priority (intelligence policy):
+  1. Local LLM (Ollama) — private, preferred
+  2. Cloud LLM (Claude) — fallback when allow_cloud=True
+  3. Template — always works, no LLM needed
+
+Interactive runner:
+  - Multiple choice: A/B/C/D selection
+  - Short answer: free text
+  - Score + per-question explanations at end
+"""
+import json
+import re
+import time
+from typing import Optional
+
+from rich.console import Console
+
+_QUIZ_SYSTEM = "You are a technical quiz generator. Return ONLY valid JSON — no markdown fences."
+
+
+# ── Helpers ───────────────────────────────────────────────────────────────────
+
+def _parse_quiz_json(text: str) -> Optional[dict]:
+    text = re.sub(r"^```(?:json)?\s*", "", text.strip())
+    text = re.sub(r"\s*```$", "", text)
+    try:
+        data = json.loads(text)
+        if "questions" in data and len(data["questions"]) > 0:
+            return data
+    except Exception:
+        pass
+    return None
+
+
+def _build_prompt(concept: str, level: str, n: int, context: str) -> str:
+    from packages.intelligence.prompts import get as get_prompt
+    mc = max(1, n - 2)
+    sa = n - mc
+    return get_prompt(
+        "quiz-generation",
+        n=n, concept=concept, level=level,
+        context=context or "general use",
+        mc=mc, sa=sa,
+    )
+
+
+# ── Generation layers ─────────────────────────────────────────────────────────
+
+def _via_router(concept: str, level: str, n: int, context: str,
+                allow_cloud: bool) -> Optional[dict]:
+    """Try local LLM then (optionally) cloud LLM. Returns None if both fail."""
+    from packages.intelligence import router
+    prompt = _build_prompt(concept, level, n, context)
+    result, layer = router.generate(
+        prompt, system=_QUIZ_SYSTEM, allow_cloud=allow_cloud, timeout=60.0
+    )
+    if result:
+        data = _parse_quiz_json(result)
+        if data:
+            data["generated_by"] = layer
+            return data
+    return None
+
+
+def _via_template(concept: str, signals: list[str]) -> dict:
+    """Always works — structured questions from concept name and signals."""
+    reason = signals[0] if signals else f"You have been working with {concept}"
+    return {
+        "topic": concept,
+        "level": "practical",
+        "reason": reason,
+        "generated_by": "scripts",
+        "questions": [
+            {
+                "type": "short_answer",
+                "question": f"In your own words, what does `{concept}` do?",
+                "answer": "varies",
+                "explanation": f"Understanding what {concept} does is the first step.",
+            },
+            {
+                "type": "multiple_choice",
+                "question": f"When would you use `{concept}`?",
+                "options": [
+                    "A. To run code",
+                    "B. To manage dependencies",
+                    "C. To build / compile",
+                    "D. Depends on context",
+                ],
+                "answer": "D",
+                "explanation": f"The right use case for {concept} depends on your project setup.",
+            },
+            {
+                "type": "short_answer",
+                "question": f"What error have you seen most often with `{concept}`?",
+                "answer": "varies",
+                "explanation": "Recognising your own error patterns is the fastest path to fixing them.",
+            },
+        ],
+    }
+
+
+# ── Public API ────────────────────────────────────────────────────────────────
+
+def generate_quiz(
+    concept: str,
+    level: str = "beginner",
+    n: int = 5,
+    context: str = "",
+    signals: Optional[list[str]] = None,
+    allow_cloud: bool = True,
+) -> dict:
+    """
+    Generate a quiz. Always returns a dict — never raises, never returns None.
+
+    Tries: local LLM → cloud LLM (if allow_cloud) → template.
+    """
+    result = _via_router(concept, level, n, context, allow_cloud)
+    if result:
+        return result
+    return _via_template(concept, signals or [])
+
+
+# Alias kept so Stage 4 code that imported generate_quiz_claude still works
+def generate_quiz_claude(concept: str, level: str = "beginner",
+                         n: int = 5, context: str = "") -> Optional[dict]:
+    return _via_router(concept, level, n, context, allow_cloud=True)
+
+
+# ── Interactive runner ────────────────────────────────────────────────────────
+
+def run_quiz_interactive(quiz_data: dict, console: Console) -> dict:
+    """
+    Run a quiz interactively in the terminal.
+    Returns {score, total, percent, answers, completed_at}.
+    """
+    questions = quiz_data.get("questions", [])
+    topic = quiz_data.get("topic", "unknown")
+    reason = quiz_data.get("reason", "")
+
+    console.print(f"\n[bold]{topic} Quiz[/bold]")
+    if reason:
+        console.print(f"[dim]{reason}[/dim]")
+    gen = quiz_data.get("generated_by", "scripts")
+    console.print(f"[dim]{len(questions)} question(s)  ·  generated by: {gen}[/dim]\n")
+    console.rule(style="dim")
+
+    results = []
+    correct_count = 0
+
+    for i, q in enumerate(questions, 1):
+        qtype = q.get("type", "short_answer")
+        console.print(f"\n[bold]Q{i}:[/bold] {q['question']}")
+
+        if qtype == "multiple_choice":
+            for opt in q.get("options", []):
+                console.print(f"   {opt}")
+            user_ans = input("   Your answer (A/B/C/D): ").strip().upper()
+            expected = q.get("answer", "").upper()
+            is_correct = bool(user_ans) and (user_ans == expected or user_ans == expected[:1])
+        else:
+            user_ans = input("   Your answer: ").strip()
+            expected = q.get("answer", "")
+            is_correct = expected.lower() == "varies" or bool(user_ans)
+
+        if is_correct:
+            correct_count += 1
+            console.print("   [green]✓[/green]", end="")
+        else:
+            console.print(f"   [red]✗ Expected: {expected}[/red]", end="")
+
+        explanation = q.get("explanation", "")
+        if explanation:
+            console.print(f"  [dim]— {explanation}[/dim]")
+        else:
+            console.print()
+
+        results.append({
+            "question": q["question"],
+            "user_answer": user_ans,
+            "expected": expected,
+            "correct": is_correct,
+            "explanation": explanation,
+        })
+
+    console.rule(style="dim")
+    pct = int(correct_count / len(questions) * 100) if questions else 0
+    color = "green" if pct >= 70 else "yellow" if pct >= 50 else "red"
+    console.print(f"\n[{color}]Score: {correct_count}/{len(questions)} ({pct}%)[/{color}]")
+
+    if pct >= 70:
+        console.print("[dim]Solid — you are getting comfortable with this.[/dim]")
+    elif pct >= 50:
+        console.print("[dim]On the right track — a bit more practice will help.[/dim]")
+    else:
+        console.print("[dim]This area needs more attention — review the explanations above.[/dim]")
+    console.print()
+
+    return {
+        "score": correct_count,
+        "total": len(questions),
+        "percent": pct,
+        "answers": results,
+        "completed_at": int(time.time()),
+    }
