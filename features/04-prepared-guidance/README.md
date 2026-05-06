@@ -1,6 +1,6 @@
 # Feature: Prepared Guidance
 
-**Status:** Concept  
+**Status:** Built  
 **Stage:** 4  
 **Why it matters:** This is what makes Stareha feel like a mentor, not a logger. Proactive preparation is the product's most powerful experience.
 

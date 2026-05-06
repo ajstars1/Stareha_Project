@@ -20,21 +20,22 @@ Every time you open your laptop, Stareha knows what you were working on, where y
 
 ## Current stage
 
-**Stage 3 — Learning Ledger built and working.**
+**Stage 4 — Prepared Guidance built and working.**
 
 ```bash
-stareha what-did-you-learn today      # events observed, patterns found, memories approved
-stareha what-did-you-learn yesterday  # same for yesterday
-stareha what-did-you-learn session    # last session summary
-stareha ledger                        # full audit log of learning runs + feedback stats
-stareha status                        # shows inbox + memory count
+stareha note "struggling with async/await"  # highest-signal weak concept input
+stareha prep --quiz                          # generate briefing + quiz for weak concepts
+stareha brief                                # show latest briefing at any time
+stareha quiz "CSS flexbox"                   # run an interactive quiz on any topic
+stareha session start "learn web dev"        # automatically shows pending briefing
 ```
 
-Stage 1: daemon, SQLite event store, terminal scanner, live shell hook, file watcher, redaction, permission system.  
-Stage 2: pattern extractor (frequency, sequences, error-fix, project context), learning runner, full memory governance CLI.  
-Stage 3: learning_runs audit table, feedback-gated confidence scoring, `what-did-you-learn`, `ledger`, schema migrations.
+Stage 1: daemon, SQLite event store, terminal scanner, live hook, file watcher, redaction, permissions.  
+Stage 2: pattern extractor, learning runner, full memory governance CLI.  
+Stage 3: learning_runs audit, feedback-gated confidence, `what-did-you-learn`, `ledger`.  
+Stage 4: weak concept detector, deterministic briefing builder, quiz generation (Claude API + template fallback), `prep`/`brief`/`quiz`/`note`, briefing delivery on session start.
 
-Moving to Stage 4: Prepared Guidance — daily briefing, quiz generation, weak concept detection.
+Moving to Stage 5: Local LLM — replace cloud quiz generation with Ollama.
 
 See [product/roadmap.md](product/roadmap.md) for the full plan.
 

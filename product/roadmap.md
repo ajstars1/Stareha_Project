@@ -130,21 +130,38 @@ Relevant docs:
 ---
 
 ## Stage 4 — Prepared Guidance
+**Status:** Complete
 
 Goal: Make Stareha proactive and mentor-like.
 
 Features:
-- Daily/next-session preparation
-- Quiz generation
-- Exercise generation
-- Weak concept detection
-- Next-step recommendations
-- Work task preparation
+- [x] `packages/guidance/detector.py` — weak concept detection from 4 signal sources:
+  - User notes ("struggling with X") — highest weight (0.95)
+  - error_fix memories — known tool failures (0.35/occurrence)
+  - Repeated exit-code failures on same command (0.20/failure)
+  - Session goals ("learn X") — intent signal (0.10)
+- [x] `packages/guidance/briefing.py` — deterministic work + learning briefing builder
+  - Work: project context, command patterns, error patterns, recent commands, next steps
+  - Learning: weak concepts with signals, strong concepts, suggested plan
+- [x] `packages/guidance/quiz.py` — quiz generation + interactive terminal runner
+  - Claude API (claude-haiku) when `ANTHROPIC_API_KEY` set
+  - Template fallback always works (no API key needed)
+  - Interactive runner: multiple choice (A/B/C/D) + short answer + scoring
+- [x] `packages/guidance/prep.py` — orchestrator storing all guidance in `prepared_guidance` table
+- [x] `prepared_guidance` table + `user_notes` table added to schema
+- [x] `stareha prep [--quiz]` — generate briefing + optional quiz, display inline
+- [x] `stareha brief` — show latest prepared briefing at any time
+- [x] `stareha quiz [topic]` — run interactive quiz (from prep or on-demand topic)
+- [x] `stareha note "text"` — add manual note (highest-weight weak concept signal)
+- [x] `stareha session start` — automatically shows pending briefing before starting
+- [x] Fixed: store lifecycle bug in session stop (store now closed after learning run)
 
 Success:
 ```
 When the user returns, Stareha has prepared useful personalized guidance.
 ```
+
+Acceptance test passed: `stareha note "struggling with X"` → `stareha prep --quiz` → briefing shows weak concept + quiz generated → `stareha session start` delivers briefing automatically.
 
 Relevant docs:
 - [Prepared Guidance](../features/04-prepared-guidance/README.md)
