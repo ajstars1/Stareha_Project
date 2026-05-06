@@ -1,6 +1,6 @@
 # Feature: Learning Ledger
 
-**Status:** Concept  
+**Status:** Built  
 **Stage:** 3  
 **Why it matters:** This is the trust layer. Without it, Stareha is creepy. With it, Stareha is trustworthy.
 

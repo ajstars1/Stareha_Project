@@ -98,20 +98,31 @@ Relevant docs:
 ---
 
 ## Stage 3 — Learning Ledger
+**Status:** Complete
 
 Goal: Make learning transparent and controllable.
 
 Features:
-- Learning runs with full provenance
-- `stareha memory why <id>`
-- `stareha what-did-you-learn today`
-- Memory feedback (approve/reject/edit)
-- Confidence/sensitivity scoring
+- [x] `learning_runs` table — every run tracked (started, events processed, candidates, status)
+- [x] `learning_run_id` on candidates and memories — full traceability
+- [x] Feedback-gated confidence — 3 rejections → 75% bar, 6 → 85%, 10 → 95%
+- [x] `stareha what-did-you-learn [today|yesterday|session|week]`
+  - Events observed by source
+  - Learning runs summary
+  - All patterns found with confidence + status
+  - Memories approved in period
+  - Pending inbox count
+- [x] `stareha ledger` — full audit view (runs, feedback stats, blocked pattern types)
+- [x] `stareha status` updated — shows inbox pending count + approved memory count
+- [x] Dedup improved — blocks both pending and approved to prevent re-surfacing accepted patterns
+- [x] Schema migration — `_run_migrations()` adds new columns to existing DBs without data loss
 
 Success:
 ```
 The user can inspect, control, and improve what Stareha learns.
 ```
+
+Acceptance test passed: `stareha what-did-you-learn yesterday` shows 92 events, 1 run, patterns with status; `stareha ledger` shows audit trail with feedback rates.
 
 Relevant docs:
 - [Learning Ledger](../features/03-learning-ledger/README.md)
