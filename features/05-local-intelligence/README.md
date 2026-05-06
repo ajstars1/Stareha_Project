@@ -1,6 +1,6 @@
 # Feature: Local Intelligence
 
-**Status:** Concept  
+**Status:** Built  
 **Stage:** 1 (scripts), 5 (local LLM), 3 (cloud LLM restricted)
 
 ---

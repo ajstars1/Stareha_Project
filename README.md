@@ -20,22 +20,23 @@ Every time you open your laptop, Stareha knows what you were working on, where y
 
 ## Current stage
 
-**Stage 4 — Prepared Guidance built and working.**
+**Stage 5 — Local LLM integration built.**
 
 ```bash
-stareha note "struggling with async/await"  # highest-signal weak concept input
-stareha prep --quiz                          # generate briefing + quiz for weak concepts
-stareha brief                                # show latest briefing at any time
-stareha quiz "CSS flexbox"                   # run an interactive quiz on any topic
-stareha session start "learn web dev"        # automatically shows pending briefing
+stareha status                # shows Local LLM + Cloud LLM availability
+stareha local-llm status      # full intelligence policy status
+stareha local-llm pull        # pull llama3.2:3b into Ollama
+stareha local-llm prompts     # export prompt templates to ~/.stareha/prompts/
+stareha talk                  # conversational mode (local LLM preferred, --cloud for Claude)
 ```
 
-Stage 1: daemon, SQLite event store, terminal scanner, live hook, file watcher, redaction, permissions.  
+Stage 1: daemon, SQLite, terminal scanner, live hook, file watcher, redaction, permissions.  
 Stage 2: pattern extractor, learning runner, full memory governance CLI.  
 Stage 3: learning_runs audit, feedback-gated confidence, `what-did-you-learn`, `ledger`.  
-Stage 4: weak concept detector, deterministic briefing builder, quiz generation (Claude API + template fallback), `prep`/`brief`/`quiz`/`note`, briefing delivery on session start.
+Stage 4: weak concept detection, deterministic briefing, quiz generation, `prep`/`brief`/`quiz`/`note`.  
+Stage 5: intelligence policy router (local → cloud → template), Ollama client, Cloud LLM client, session summarizer, memory enrichment, prompt templates, `talk` mode.
 
-Moving to Stage 5: Local LLM — replace cloud quiz generation with Ollama.
+Moving to Stage 6: Desktop companion — tray app, sidebar, Memory Inbox UI.
 
 See [product/roadmap.md](product/roadmap.md) for the full plan.
 

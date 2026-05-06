@@ -169,20 +169,40 @@ Relevant docs:
 ---
 
 ## Stage 5 — Local LLM Integration
+**Status:** Complete
 
 Goal: Use local intelligence for private learning.
 
 Features:
-- Ollama or llama.cpp integration
-- Local summarization
-- Local quiz/exercise drafts
-- Local memory compression
-- Cloud fallback only when needed
+- [x] `packages/intelligence/local_llm/` — Ollama HTTP client (httpx, configurable timeouts, never blocks)
+  - `is_available()`, `list_models()`, `generate()`, `chat()`, `pull()`
+- [x] `packages/intelligence/cloud_llm/` — Claude client (thin SDK wrapper)
+- [x] `packages/intelligence/router.py` — **the policy router**
+  - Enforces: scripts → local LLM → cloud LLM (only with `allow_cloud=True`)
+  - `generate()` and `chat()` both return `(result, layer_used)` — always know which layer ran
+  - `status()` — used by `stareha status` and `stareha local-llm status`
+- [x] `packages/intelligence/prompts.py` — prompt template manager
+  - Bundled defaults for: `session-summary`, `quiz-generation`, `memory-enrichment`, `talk-system`
+  - Written to `~/.stareha/prompts/` on demand (user-editable)
+- [x] `packages/intelligence/summarizer.py` — session summary + memory enrichment via router
+  - `summarize_session()` — 2-3 sentence summary after session stop (local LLM only, no cloud)
+  - `enrich_memory_candidate()` — richer natural-language memory text (local LLM only)
+- [x] Quiz routing updated — `generate_quiz()` now: local LLM → cloud LLM → template (was: cloud → template)
+- [x] Learning runner updated — `_enrich_candidates()` runs enrichment when Ollama available
+- [x] `stareha status` — shows Local LLM + Cloud LLM availability with clear install hints
+- [x] `stareha local-llm status` — full intelligence policy status + prompt template list
+- [x] `stareha local-llm pull [model]` — pull model via Ollama
+- [x] `stareha local-llm prompts` — export default templates to `~/.stareha/prompts/`
+- [x] `stareha talk [--cloud]` — conversational mode using memories as context (local LLM preferred)
+- [x] `stareha session stop` — generates session summary when Ollama available (non-blocking)
+- [x] All layers degrade gracefully — every caller handles `None` return; CLI always tells the user why
 
 Success:
 ```
 Stareha can learn and prepare mostly without sending raw context online.
 ```
+
+Acceptance test passed: all commands work correctly with no Ollama and no API key; `stareha status` clearly shows both layers as unavailable with install instructions; router correctly falls through all layers to `none`; quiz falls back to template; `stareha talk` shows actionable error.
 
 Relevant docs:
 - [Local Intelligence](../features/05-local-intelligence/README.md)
