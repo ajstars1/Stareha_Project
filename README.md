@@ -20,9 +20,17 @@ Every time you open your laptop, Stareha knows what you were working on, where y
 
 ## Current stage
 
-**Stage 0 — Concept validated, documentation complete.**
+**Stage 1 — Local runtime built and working.**
 
-Building Stage 1: Linux daemon + SQLite event store + terminal history scanner.
+```bash
+stareha init    # enable sources, install shell hook
+stareha start   # start daemon (systemd user service)
+stareha status  # show running status + event count
+```
+
+Stage 1 delivers: daemon, SQLite event store, terminal history scanner, live shell hook, file watcher, redaction, permission system, full CLI.
+
+Moving to Stage 2: Workflow memory — turning collected events into useful memories.
 
 See [product/roadmap.md](product/roadmap.md) for the full plan.
 

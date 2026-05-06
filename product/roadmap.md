@@ -6,7 +6,7 @@
 ---
 
 ## Stage 0 — Product Definition
-**Status:** Current
+**Status:** Complete
 
 Goals:
 - Define AgentOS Continuum and Stareha
@@ -26,23 +26,31 @@ Deliverables:
 ---
 
 ## Stage 1 — Linux Local Runtime
+**Status:** Complete
 
 Goal: Build the basic local runtime.
 
 Features:
-- `stareha start`
-- `stareha stop`
-- `stareha status`
-- Linux daemon (systemd user service)
-- SQLite event store
-- Filesystem watcher
-- Basic terminal history scanner
-- Local-only storage
+- [x] `stareha start` / `stop` / `status` / `restart`
+- [x] `stareha init` — first-run wizard
+- [x] `stareha session start/stop/status`
+- [x] `stareha memory inbox/stats`
+- [x] `stareha permissions list/add`
+- [x] Linux daemon (systemd user service)
+- [x] SQLite event store with full schema (events, sessions, memories, memory_candidates, meta)
+- [x] Filesystem watcher (inotify-simple, permission-gated)
+- [x] Terminal history scanner (zsh/bash, dedup, redaction)
+- [x] Live terminal hook receiver (HTTP on port 7431, shell hook for ~/.zshrc)
+- [x] Redaction layer (always-on, covers API keys, tokens, env vars, JWTs, DB connstrings)
+- [x] Permission system (opt-in per source, `can_collect()` gating everywhere)
+- [x] Local-only storage
 
 Success:
 ```
 Stareha can run locally and observe approved events.
 ```
+
+Acceptance test passed: `stareha status` shows daemon + event count growing from terminal history.
 
 Relevant docs:
 - [Daemon & Runtime](../features/07-daemon-runtime/README.md)
