@@ -36,13 +36,20 @@ Features:
 - [x] `stareha session start/stop/status`
 - [x] `stareha memory inbox/stats`
 - [x] `stareha permissions list/add`
-- [x] Linux daemon (systemd user service)
+- [x] Linux daemon (systemd user service + direct subprocess fallback — works without systemd)
 - [x] SQLite event store with full schema (events, sessions, memories, memory_candidates, meta)
 - [x] Filesystem watcher (inotify-simple, permission-gated)
 - [x] Terminal history scanner (zsh/bash, dedup, redaction)
 - [x] Live terminal hook receiver (HTTP on port 7431, shell hook for ~/.zshrc)
+- [x] Claude Code connector — reads `~/.claude/projects/*.jsonl`, no extension needed
+- [x] Browser connector — reads Chrome + Firefox SQLite history files directly, no extension needed
+  - Chrome: `~/.config/google-chrome/Default/History` (copy + read to handle file lock)
+  - Firefox: `~/.mozilla/firefox/*/places.sqlite`
+  - Filters ad/tracking domains before storage
+  - Extracts search queries from Chrome `keyword_search_terms` table
 - [x] Redaction layer (always-on, covers API keys, tokens, env vars, JWTs, DB connstrings)
 - [x] Permission system (opt-in per source, `can_collect()` gating everywhere)
+- [x] `stareha init` auto-detects Chrome/Firefox/Claude Code and offers them as opt-in sources
 - [x] Local-only storage
 
 Success:
@@ -50,7 +57,7 @@ Success:
 Stareha can run locally and observe approved events.
 ```
 
-Acceptance test passed: `stareha status` shows daemon + event count growing from terminal history.
+Acceptance test passed: `stareha status` shows daemon + event count growing from terminal, Claude Code (45 sessions), and Chrome (2302 visits) history.
 
 Relevant docs:
 - [Daemon & Runtime](../features/07-daemon-runtime/README.md)
@@ -69,6 +76,8 @@ Features:
   - [x] Command sequences: A → B pairs that consistently co-occur
   - [x] Error-fix pairs: failed_cmd → recovery_cmd within 15 minutes
   - [x] Project context: detect stack from package.json, pyproject.toml, go.mod
+  - [x] Research topics: frequent domain visits + search queries from browser history
+  - [x] Claude Code patterns: topics repeatedly discussed with Claude
 - [x] Learning runner: `stareha learn` (manual) + triggered on session stop
 - [x] Memory candidates written to inbox with confidence + sensitivity scoring
 - [x] Full memory governance CLI

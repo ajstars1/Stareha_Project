@@ -1,191 +1,119 @@
 # Connector: Claude Code
 
-**Status:** Concept  
-**Stage:** 2  
-**Permission required:** `claude_code:read`
+**Status:** Built  
+**Stage:** 1  
+**Permission required:** `claude_code` (enabled via `stareha init` or `stareha permissions add claude_code`)
 
 ---
 
 ## What It Is
 
-The Claude Code connector reads from Claude Code's local session history to learn what the user was building, debugging, and deciding with AI assistance.
+The Claude Code connector reads conversation history from Claude Code's local session files to learn what the user was building, debugging, and deciding with AI assistance.
 
-This is one of the highest-signal connectors — Claude Code sessions contain explicit decisions, bug descriptions, plans, and task states.
-
----
-
-## Why It Matters
-
-When a developer uses Claude Code, they:
-- Describe bugs they're fixing
-- Make architectural decisions
-- Set up tasks and plans
-- Discuss files and functions
-- Get stuck and ask for help
-
-This is the richest source of intent and context. Stareha should understand it.
+No extension or API key required — it reads the JSONL files Claude Code stores locally.
 
 ---
 
 ## What It Reads
 
-### 1. Chat History (`.claude/conversations/`)
-Claude Code stores conversation history locally. The connector reads completed sessions.
+### Session files
 
-Extracts:
-- What the user asked Claude to do
-- Bugs being fixed (described in conversation)
-- Files discussed
-- Decisions made
-- Plans generated
-- Errors encountered
-- Open/pending tasks
+Location: `~/.claude/projects/<project-dir>/*.jsonl`
 
-Example memory from chat history:
-```
-Ayush decided AgentOS Continuum should use local scripts/local LLM first,
-and cloud LLM only when needed.
-Source: claude_code conversation on 2026-05-01
-```
+Each `.jsonl` file is one Claude Code conversation. Each line is a JSON event.
 
-### 2. CLAUDE.md Files
-Claude Code reads `CLAUDE.md` files in project directories. The connector reads these to understand project context, rules, and current focus.
+Relevant event types:
+- `type: "user"` with `message.role: "user"` — what the user asked Claude
+- `type: "assistant"` — Claude's responses (not stored, too large)
+- `type: "file-history-snapshot"` — file state at session start (not stored)
 
-Extracts:
-- Project identity and stack
-- Code rules and conventions
-- Active project context (from `/notes/` references)
-- Current goals if documented
+### What is extracted
 
-Example memory from CLAUDE.md:
-```
-AgentOS project uses TypeScript strict mode, Supabase + Prisma, Next.js 14+.
-Source: CLAUDE.md at ~/projects/agent-os
-```
+Per session:
+- **Project name** — derived from the directory path
+- **First user message** — what was being discussed (first 200 chars, redacted)
+- **Message count** — how many user turns (signals how long the session was)
+- **Session timestamps** — when it started/ended
 
-### 3. Memory Files (`.claude/projects/*/memory/`)
-Claude Code's auto-memory system stores structured memories. The connector reads these as high-confidence context.
+### What is NOT extracted
 
-Extracts:
-- User role and expertise
-- Project goals and context
-- Known preferences
-- Past decisions
-
-### 4. Session Task Lists
-If Claude Code creates task lists during sessions, the connector extracts incomplete tasks.
-
-Example memory:
-```
-Open task from last Claude Code session:
-- Wire up memory_candidates table to the inbox CLI command
-Source: claude_code task on 2026-05-04
-```
-
----
-
-## How It Works
-
-```
-On stareha session stop (or scheduled collection):
-  ↓
-Read ~/.claude/projects/ directory
-  ↓
-Find sessions newer than last_collected_at
-  ↓
-For each session:
-  - Read conversation JSON
-  - Extract decisions, bugs, tasks, files mentioned
-  - Read associated CLAUDE.md if project found
-  - Redact: strip any API keys, tokens, private data
-  ↓
-Generate events:
-  - type: 'claude_code_decision'
-  - type: 'claude_code_task'
-  - type: 'claude_code_bug'
-  - type: 'claude_code_context'
-  ↓
-Send to event store
-```
-
----
-
-## Redaction Rules
-
-Before any event is stored:
-- Strip API keys (regex: `sk-...`, `ghp_...`, etc.)
-- Strip passwords mentioned in conversation
-- Strip full file contents if accidentally pasted
-- Keep: decisions, bug descriptions, task names, file names
+- Full conversation text
+- Code snippets or file contents pasted into conversations
+- Tool results (too large, often contains file contents)
+- Assistant responses
 
 ---
 
 ## Data Location (Linux)
 
-| Data type | Location |
-|-----------|----------|
-| Conversation history | `~/.claude/projects/*/conversations/` |
-| Auto-memory | `~/.claude/projects/*/memory/` |
-| Project CLAUDE.md | `<project-root>/CLAUDE.md` |
-| Settings | `~/.claude/settings.json` |
+```
+~/.claude/
+  projects/
+    -home-ubuntu-Developer-Ayush-my-project/
+      SESSION_ID.jsonl      ← one file per conversation
+      SESSION_ID.jsonl
+    -home-ubuntu-Developer-Ayush-other-project/
+      SESSION_ID.jsonl
+  history.jsonl             ← global slash-command history
+  settings.json
+```
+
+Directory names mirror the filesystem path with `-` replacing `/`.
 
 ---
 
-## Example Events Generated
+## Event format stored
 
 ```json
 {
-  "type": "claude_code_decision",
+  "type": "ai_session",
   "source": "claude_code",
-  "project": "agent-os",
-  "content": "Decided to use SQLite for local event store — simpler than PostgreSQL for local-first",
-  "session_date": "2026-05-01",
-  "confidence": 0.91
-}
-```
-
-```json
-{
-  "type": "claude_code_task",
-  "source": "claude_code",
-  "project": "stareha",
-  "content": "TODO: Wire up memory_candidates table to inbox CLI command",
-  "status": "open",
-  "session_date": "2026-05-04"
+  "content": {
+    "project": "my-project",
+    "first_message": "can you help me fix the auth middleware",
+    "message_count": 23,
+    "session_id": "3216898b-be8d-41bd-9dec-f62467be4a46",
+    "dedup": "sha256..."
+  }
 }
 ```
 
 ---
 
-## Sub-Topics (Each Deeply Important)
+## Pattern extraction
 
-### Chat History
-The raw conversation log. Highest signal, most complex to parse.
-- Session format: JSONL or structured JSON
-- Extract turns where user asks questions or makes decisions
-- Identify "we decided..." / "let's use..." / "the bug is..." patterns
+The `extract_claude_code_patterns()` extractor finds topics you repeatedly discuss with Claude:
 
-### CLAUDE.md
-The project rules file. Static, high-confidence context.
-- Read on connector init and on file change
-- Parse identity, stack, rules sections
-- Associate with project directory
+```
+"You repeatedly discussed with Claude: 'fix the auth middleware' (3 sessions)."
+type: decision | source: claude_code | confidence: 0.72
+```
 
-### Memory Files
-Claude Code's auto-memory. Already structured.
-- Read as-is, map to Stareha memory format
-- Confidence: inherit from Claude Code memory confidence
+Threshold: 2+ sessions with similar first messages before generating a candidate.
 
-### Task Lists
-Incomplete tasks from sessions.
-- Track as open work items
-- Surface in work session briefings
-- Mark complete when user reports completion
+---
+
+## Privacy
+
+- Redaction runs on every extracted message before storage
+- Full conversation content is never stored — only first message + metadata
+- Session files are read-only, never modified
+
+---
+
+## Implementation
+
+`src/packages/collectors/claude_code/__init__.py`
+
+Key function: `scan_claude_code(store, since=None) -> int`
+
+Called by the daemon on startup. Returns count of new sessions imported.
+Deduplicates by `sha256(session_id)` — safe to call repeatedly.
 
 ---
 
 ## Related Files
+
 - [Connectors Overview](README.md)
 - [Claude Code Memory](../../02-workflow-memory/claude-code-memory.md)
-- [Learning Ledger Flow](../../../_flows/learning-ledger-flow.md)
-- [Permission Flow](../../../_flows/permission-flow.md)
+- [Pattern Extractor](../../../src/packages/intelligence/scripts/pattern_extractor.py)

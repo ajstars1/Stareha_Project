@@ -47,14 +47,18 @@ Prepared Guidance triggered (async, at end of session)
 
 ## Input Sources
 
-| Source | Collected by | When |
-|--------|-------------|------|
-| Terminal commands | Shell hook / history scanner | Continuous or on session end |
-| Claude Code conversations | History importer | On session end |
-| Browser visits | Browser extension (Stage 7) | On navigation / page close |
-| File changes | Filesystem watcher | On save |
-| App usage | App usage monitor | Periodic |
-| User goals | Explicit user input | On session start |
+| Source | Collected by | When | Status |
+|--------|-------------|------|--------|
+| Terminal commands | Shell hook (port 7431) + history scanner | Continuous + daemon start | ✅ Built |
+| File changes | inotify watcher | On save (continuous) | ✅ Built |
+| Claude Code sessions | `~/.claude/projects/*.jsonl` file reader | Daemon start | ✅ Built |
+| Browser visits | Chrome/Firefox SQLite file reader (no extension) | Daemon start | ✅ Built |
+| Browser searches | `keyword_search_terms` table (Chrome) | Daemon start | ✅ Built |
+| User notes | `stareha note "..."` command | Manual | ✅ Built |
+| User goals | Session start goal text | On `session start` | ✅ Built |
+| App usage | App usage monitor | Periodic | Planned |
+
+**Browser note:** Stage 7 browser extension remains planned for real-time events ("remember this page", page summaries). The file reader provides full visit history without an extension.
 
 ---
 

@@ -1,6 +1,6 @@
 # Feature: Daemon & Runtime
 
-**Status:** Concept  
+**Status:** Built  
 **Stage:** 1  
 **Why it matters:** The daemon is the foundation. Without it, Stareha is a command you run manually. With it, Stareha is a companion that's always observing and preparing.
 
@@ -36,26 +36,48 @@ The daemon ensures:
 
 ## Daemon Responsibilities
 
-| Responsibility | When |
-|---------------|------|
-| Collect terminal events | Continuous (via shell hook) |
-| Watch file changes | Continuous (inotify) |
-| Import Claude Code history | On session end |
-| Run learning run | On session end + scheduled |
-| Prepare guidance | After learning run |
-| Deliver suggestions | On session start / scheduled |
-| Memory inbox notification | When new candidates arrive |
+| Responsibility | When | Status |
+|---------------|------|--------|
+| Collect terminal events | Continuous (via shell hook on port 7431) | ✅ |
+| Scan terminal history | On daemon start | ✅ |
+| Watch file changes | Continuous (inotify) | ✅ |
+| Import Claude Code history | On daemon start | ✅ |
+| Import browser history | On daemon start | ✅ |
+| Run learning run | On session end + manually | ✅ |
+| Prepare guidance | After learning run, manually | ✅ |
+| Deliver briefing | On session start | ✅ |
+| Memory inbox notification | When new candidates arrive | ✅ |
 
 ---
 
 ## Daemon Lifecycle
 
 ```bash
-stareha start   # Start daemon (systemd enable + start)
-stareha stop    # Stop daemon  (systemd stop)
-stareha status  # Show daemon status + memory stats + active sources
-stareha restart # Restart daemon
+stareha start   # Start daemon — tries systemd first, falls back to direct subprocess
+stareha stop    # Stop daemon — kills via PID file if systemd unavailable
+stareha status  # Show daemon status + memory stats + active sources + LLM status
+stareha restart # Restart daemon (stop then start)
 ```
+
+### Startup behaviour
+
+On start, the daemon runs immediately:
+1. Scans `~/.zsh_history` / `~/.bash_history` for terminal events
+2. Scans `~/.claude/projects/` for Claude Code sessions
+3. Scans Chrome/Firefox history SQLite files
+4. Starts the shell hook HTTP server (port 7431)
+5. Starts inotify file watchers for permitted paths
+
+All steps are permission-gated — only enabled sources are scanned.
+
+### systemd vs direct launch
+
+`stareha start` tries systemd first if `~/.config/systemd/user/stareha.service` exists.
+If systemd is unavailable or the service file is not installed, it launches the daemon
+as a detached subprocess using `start_new_session=True`. The PID is written to
+`~/.stareha/daemon.pid` and checked by all commands.
+
+`stareha init` installs the systemd service file. Without init, direct launch is used.
 
 ---
 

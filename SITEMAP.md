@@ -43,12 +43,14 @@
 | [src/packages/collectors/terminal/history\_scanner.py](src/packages/collectors/terminal/history_scanner.py) | Scans `~/.zsh_history` / `~/.bash_history` on daemon start |
 | [src/packages/collectors/terminal/hook\_receiver.py](src/packages/collectors/terminal/hook_receiver.py) | HTTP server on port 7431 — receives live shell hook events |
 | [src/packages/collectors/files/watcher.py](src/packages/collectors/files/watcher.py) | inotify-based file watcher — fires `file_edit` events |
+| [src/packages/collectors/claude\_code/\_\_init\_\_.py](src/packages/collectors/claude_code/__init__.py) | Reads `~/.claude/projects/*.jsonl` — extracts session topics, no extension needed |
+| [src/packages/collectors/browser/\_\_init\_\_.py](src/packages/collectors/browser/__init__.py) | Reads Chrome + Firefox SQLite history — domain visits + search queries, no extension needed |
 
 ### Intelligence
 
 | File | What it covers |
 |------|---------------|
-| [src/packages/intelligence/scripts/pattern\_extractor.py](src/packages/intelligence/scripts/pattern_extractor.py) | Deterministic extractors — frequency, sequences, error-fix, project context |
+| [src/packages/intelligence/scripts/pattern\_extractor.py](src/packages/intelligence/scripts/pattern_extractor.py) | Deterministic extractors — frequency, sequences, error-fix, project context, research topics (browser), Claude Code patterns |
 | [src/packages/intelligence/learning\_runner.py](src/packages/intelligence/learning_runner.py) | Orchestrates extraction — dedup, feedback gate, writes candidates |
 | [src/packages/intelligence/ledger.py](src/packages/intelligence/ledger.py) | Learning run tracking — `what_did_you_learn`, feedback stats |
 | [src/packages/intelligence/router.py](src/packages/intelligence/router.py) | **Policy router** — scripts → local LLM → cloud LLM |

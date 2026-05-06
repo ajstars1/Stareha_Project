@@ -1,6 +1,6 @@
 # Linux Daemon
 
-**Status:** Concept  
+**Status:** Built  
 **Stage:** 1
 
 ---
@@ -46,11 +46,30 @@ systemctl --user start stareha
 ## Commands
 
 ```bash
-stareha start      # → systemctl --user start stareha
-stareha stop       # → systemctl --user stop stareha
-stareha restart    # → systemctl --user restart stareha
-stareha status     # Custom status output (not raw systemctl)
+stareha start      # Tries systemd → falls back to direct subprocess launch
+stareha stop       # systemctl stop (if available) + SIGTERM via PID file
+stareha restart    # stop then start
+stareha status     # Custom status: events, inbox, LLM availability, sources
 ```
+
+### Start fallback logic
+
+```
+stareha start
+  ↓
+Is ~/.config/systemd/user/stareha.service installed?
+  YES → systemctl --user start stareha
+        Check PID file after 1.5s
+        If PID exists → success
+        Else → try direct launch
+  NO  → direct launch
+         subprocess.Popen([python3, daemon/main.py], start_new_session=True)
+         Poll PID file for up to 3s
+         If PID exists → success
+```
+
+Direct launch makes `stareha start` work on any Linux system, even without systemd
+(containers, WSL, non-systemd distros).
 
 ### `stareha status` output
 
