@@ -86,21 +86,25 @@ stareha/
 
 ## Language Decision
 
-Two options:
+**Locked: Python for Stage 1–4. Re-evaluate Rust at Stage 5.**
 
-**Option A: Python**
-- Fast to iterate
-- Rich ecosystem (inotify, SQLite, Ollama client)
-- Easy regex and pattern matching
-- Slower startup (acceptable for daemon)
+Reasons:
+- hermes-agent and agent-os have production-ready Python code to copy directly (redact.py, shell_hooks.py, retry_utils.py, rate_limit_tracker.py, sqlite store)
+- inotify, SQLite, Ollama, systemd — all first-class Python
+- Fast iteration on MVP
+- Rust if/when performance becomes a real problem (not before Stage 5)
 
-**Option B: Rust**
-- Native Linux performance
-- Small binary
-- Harder to iterate quickly
-- Best for Stage 3+ when product is stable
+**Package manager:** `uv` (fast, modern, replaces pip + venv)
 
-**Recommendation: Python for MVP, evaluate Rust for daemon at Stage 3.**
+**Python version:** 3.11+
+
+**Key dependencies:**
+- `better-sqlite3` → `sqlite3` (stdlib, no extra install)
+- `inotify-simple` — file watching
+- `httpx` — async HTTP (Ollama client, daemon HTTP server)
+- `click` — CLI commands
+- `pydantic` — config validation + type safety
+- `rich` — terminal output formatting
 
 ---
 

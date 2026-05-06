@@ -5,6 +5,17 @@
 
 ---
 
+## Root
+
+| File | What it covers |
+|------|---------------|
+| [README.md](README.md) | Project overview, what Stareha is, current stage, stack |
+| [CLAUDE.md](CLAUDE.md) | Claude rules — documentation law, practices, skills map |
+| [SITEMAP.md](SITEMAP.md) | This file — master navigation |
+| [.gitignore](.gitignore) | Keeps `src/` and `reference/` local; never pushed |
+
+---
+
 ## Project Skills
 
 | File | What it covers |
@@ -26,6 +37,7 @@
 | [product/mvp.md](product/mvp.md) | MVP scope, features, demo script |
 | [product/naming.md](product/naming.md) | AgentOS Continuum vs Stareha — naming and relationship |
 | [product/differentiators.md](product/differentiators.md) | Why Stareha vs ChatGPT, Cursor, browser history, courses |
+| [product/stage-1-build-order.md](product/stage-1-build-order.md) | **Stage 1 step-by-step build order** — exact files, sequence, acceptance tests |
 
 ---
 
