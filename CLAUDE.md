@@ -5,16 +5,16 @@ This is the **Stareha / AgentOS Continuum** product documentation workspace.
 
 Stareha = AI companion. AgentOS Continuum = the system it lives inside.
 
+---
+
 ## Documentation Law
 > Every time we work on this project, documentation must be updated before the session ends.
 
-Rules:
-1. If you add a feature → write or update its report in `features/`
-2. If you change a flow → update the flow file in `_flows/`
-3. If you change system architecture → update `architecture/`
-4. If you add a new feature or sub-feature → add it to `SITEMAP.md`
-5. If a report exists, update it. If it doesn't, create it.
-6. Never leave this project in an undocumented state.
+1. Add a feature → write or update its report in `features/`
+2. Change a flow → update the relevant `_flows/` file
+3. Change architecture → update `architecture/`
+4. Add any new file → add it to `SITEMAP.md`
+5. Never leave this project in an undocumented state.
 
 ## Before Working on Anything
 1. Read `SITEMAP.md` — understand the full map
@@ -27,64 +27,124 @@ Every feature report must include:
 - **What it is** — one clear definition
 - **Why it matters** — the problem it solves
 - **How it works** — the flow/mechanism
-- **Sub-features** — links to sub-reports if any
+- **Sub-features** — links if any
 - **Stage** — which roadmap stage it belongs to
 - **Status** — Concept / In Progress / Built
 
 ## Flow Files (`_flows/`)
-Each flow file is the single source of truth for how that system works end-to-end.
-- Must be updated any time the flow changes
-- Must be reviewed before implementing the feature
-- Must match the actual implementation
+Single source of truth for how each system works end-to-end.
+- Update any time the flow changes
+- Read before implementing — must match the actual implementation
 
 ## Sitemap (`SITEMAP.md`)
-- The sitemap is the master navigation for the entire project
-- Every new file must be added to it
-- Think of it as the project's table of contents + dependency map
+Every new file must appear here. It's the project's table of contents + dependency map.
 
 ## Naming Conventions
-- Folders: `kebab-case`
-- Files: `kebab-case.md`
-- Feature folders are prefixed with numbers for ordering: `01-learning/`
-
-## Commit Convention
-- `docs: update [feature] report`
-- `docs: add [feature] flow`
-- `feat: add [feature] implementation`
-- `fix: correct [feature] description`
+- Folders/files: `kebab-case`
+- Feature folders prefixed: `01-learning/`, `02-workflow-memory/`, etc.
 
 ---
 
-## Skills to Use (gstack + project-specific)
+## Commit & PR
 
-These skills are available in every session. Use them — don't reinvent the wheel.
+**Commit format:** `type: short description` — types: `feat` `fix` `docs` `chore`
 
-### Project-Specific Skills (`.claude/skills/`)
+**Commit discipline:**
+- One logical change per commit — independently revertable
+- Never `git add -A` or `git add .` — stage specific files by name
+- Rename/move in a separate commit from behavior changes
 
-| Skill | When to use |
-|-------|-------------|
-| `/stareha-doc-sync` | **End of every session** — verify all docs are updated |
-| `/stareha-stage-check` | Before moving to the next roadmap stage |
+**PR format:**
+```
+## What changed
+[concrete description — what users/devs can now do]
 
-### gstack Skills (globally installed)
+## Why
+[motivation, not implementation narrative]
 
-| Skill | When to use in Stareha |
-|-------|----------------------|
-| `/office-hours` | Designing a new feature or sub-feature before writing the report |
-| `/plan-eng-review` | Before coding any stage — review architecture against the flow files |
-| `/plan-ceo-review` | When questioning scope or product direction |
-| `/investigate` | Debugging daemon, collectors, SQLite, Ollama integration |
-| `/review` | Before every PR — check for LLM trust boundary violations, security |
-| `/ship` | Creating PRs — bumps version, updates CHANGELOG, pushes |
-| `/document-release` | After merging — syncs CLAUDE.md, README, architecture docs |
-| `/careful` | When touching systemd daemon, SQLite migrations, permission files |
-| `/freeze` | When debugging a specific package — prevent accidental edits elsewhere |
-| `/autoplan` | Full review pipeline before starting a new stage (runs CEO + eng + design) |
+## Test plan
+- [ ] specific thing verified
+```
 
-### Skill Rules for This Project
+**CHANGELOG voice:** Lead with what you can now do, not what was refactored. "You can now..." not "Refactored the...". Real commands, real file names.
 
-1. Always run `/stareha-doc-sync` before ending a session
-2. Always run `/plan-eng-review` before starting a new stage implementation
-3. Use `/investigate` for any bug — never guess at root cause
-4. Use `/careful` any time you touch the daemon or systemd service files
-5. Use `/review` before every PR, specifically checking Principle 2 (no raw data leaves device)
+---
+
+## Debugging — Iron Law
+
+**No fixes without root cause. No exceptions.**
+
+1. Read the error fully — collect symptoms before touching code
+2. Trace the code path from symptom back to cause
+3. Check `git log --oneline -20 -- <file>` — is this a regression?
+4. Confirm hypothesis before fixing — add a log/assert at suspected cause
+5. If 3 hypotheses fail → stop, ask, don't guess further
+6. Fix the root cause, not the symptom — smallest diff that eliminates the problem
+7. If touching >5 files → something is wrong, reconsider the approach
+
+**Red flags — slow down:**
+- "Quick fix for now" → there is no "for now"
+- Proposing a fix before tracing the data flow → you're guessing
+- Each fix reveals a new bug → wrong layer, not wrong code
+
+---
+
+## Code Review — What to Always Check
+
+**Critical (check every change):**
+- SQLite queries — parameterized, no raw string concatenation
+- Raw data leaving the device — Principle 2, zero exceptions
+- Permission checks — every collector gated by `can_collect()`
+- Shell/subprocess calls — no user-controlled input in shell strings
+- Redaction runs before any write — no exceptions (see `_flows/intelligence-policy-flow.md`)
+
+**Privacy-specific (Stareha's core trust contract):**
+- Cloud LLM receives summaries only — never raw events, never file contents
+- Sensitive fields never logged — passwords, tokens, API keys
+- Every memory has provenance — no orphan writes to `memories` table
+
+**Auto-fix without asking:**
+- Dead code, unused imports, missing validation at boundaries, stale comments, magic numbers → constants
+
+**Always ask before:**
+- Security decisions, race conditions, any fix >20 lines, removing existing functionality
+
+---
+
+## Dangerous Commands — Always Confirm First
+
+These require explicit user confirmation before running:
+- `rm -rf` anything outside `~/.stareha/` or project directories
+- `systemctl` stop/disable/reset on the daemon
+- Any SQLite migration that drops or alters columns
+- `git reset --hard`, `git push --force`
+- `DROP TABLE`, `TRUNCATE`, `DELETE FROM` without `WHERE`
+
+Safe without confirmation: `rm -rf node_modules`, `rm -rf .next`, `rm -rf dist`
+
+---
+
+## Voice & Communication
+
+Write like a builder talking to another builder:
+- Lead with the point — what it does, not what you did
+- Be concrete — name files, functions, line numbers, real commands
+- Tie to outcomes — what the user sees or can now do
+- No filler: avoid "robust", "comprehensive", "seamlessly", "delve", "leverage"
+- No em dashes in code output or docs
+
+---
+
+## Skills — When to Invoke
+
+For deep/complex work, invoke the relevant skill. For everything else, the rules above are sufficient.
+
+| Skill | When |
+|-------|------|
+| `/stareha-doc-sync` | End of session — verify docs are updated |
+| `/stareha-stage-check` | Before advancing to next roadmap stage |
+| `/plan-eng-review` | Before coding a new stage |
+| `/investigate` | Any bug that isn't immediately obvious |
+| `/ship` | Creating a PR |
+| `/careful` | Touching systemd, SQLite migrations, permission files |
+| `/office-hours` | Designing a feature before writing its report |
