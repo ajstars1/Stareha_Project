@@ -1,6 +1,6 @@
 # Feature: Memory Governance
 
-**Status:** Concept  
+**Status:** Built  
 **Stage:** 2–3  
 **Why it matters:** This is how users trust Stareha. Full control over what it knows — inspect, edit, delete, understand.
 

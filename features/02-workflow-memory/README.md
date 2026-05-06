@@ -1,6 +1,6 @@
 # Feature: Workflow Memory
 
-**Status:** Concept  
+**Status:** Built  
 **Stage:** 2  
 **Why it matters:** Memory is what makes Stareha a companion, not just a tool. Without persistent workflow memory, every session starts from zero.
 

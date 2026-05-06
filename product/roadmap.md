@@ -59,22 +59,37 @@ Relevant docs:
 ---
 
 ## Stage 2 — Workflow Memory
+**Status:** Complete
 
 Goal: Turn local activity into useful memories.
 
 Features:
-- Terminal command pattern learning
-- Project association
-- Work session tracking
-- Learning session tracking
-- Memory candidates
-- Memory Inbox
-- Memory approval/rejection
+- [x] Pattern extractor (deterministic scripts, no LLM)
+  - [x] Command frequency: commands run 3+ times in a project
+  - [x] Command sequences: A → B pairs that consistently co-occur
+  - [x] Error-fix pairs: failed_cmd → recovery_cmd within 15 minutes
+  - [x] Project context: detect stack from package.json, pyproject.toml, go.mod
+- [x] Learning runner: `stareha learn` (manual) + triggered on session stop
+- [x] Memory candidates written to inbox with confidence + sensitivity scoring
+- [x] Full memory governance CLI
+  - [x] `stareha memory inbox` — show pending + `--review` interactive mode
+  - [x] `stareha memory approve/reject/edit <id>` — individual actions
+  - [x] `stareha memory why <id>` — full provenance with evidence events
+  - [x] `stareha memory sources <id>` — raw events that caused a memory
+  - [x] `stareha memory list` — list approved with filters (project, type, source)
+  - [x] `stareha memory search <query>` — FTS5 full-text search
+  - [x] `stareha memory forget <id>` — hard delete with confirmation
+  - [x] `stareha memory stats` — breakdown by source and type
+- [x] Feedback loop: every approve/reject/edit writes to memory_feedback table
+- [x] FTS5 index sync: memories_fts updated on approve and forget
+- [x] Partial ID support: commands accept 8-char prefix, not just full UUID
 
 Success:
 ```
 Stareha can learn useful workflow patterns and show them to the user.
 ```
+
+Acceptance test passed: `stareha learn --force` → `stareha memory inbox` → approve → `stareha memory why <id>` shows evidence trail.
 
 Relevant docs:
 - [Workflow Memory](../features/02-workflow-memory/README.md)

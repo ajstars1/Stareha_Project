@@ -20,17 +20,20 @@ Every time you open your laptop, Stareha knows what you were working on, where y
 
 ## Current stage
 
-**Stage 1 — Local runtime built and working.**
+**Stage 2 — Workflow memory built and working.**
 
 ```bash
-stareha init    # enable sources, install shell hook
-stareha start   # start daemon (systemd user service)
-stareha status  # show running status + event count
+stareha learn                  # extract patterns from events
+stareha memory inbox --review  # interactive review of candidates
+stareha memory why <id>        # see why something was learned
+stareha memory search "build"  # search approved memories
 ```
 
 Stage 1 delivers: daemon, SQLite event store, terminal history scanner, live shell hook, file watcher, redaction, permission system, full CLI.
 
-Moving to Stage 2: Workflow memory — turning collected events into useful memories.
+Stage 2 delivers: pattern extractor (command frequency, sequences, error-fix, project context), learning runner, full memory governance CLI (approve/reject/edit/forget/why/list/search/sources), FTS5 search, partial ID matching, feedback loop.
+
+Moving to Stage 3: Learning Ledger — full provenance UI, `stareha what-did-you-learn today`.
 
 See [product/roadmap.md](product/roadmap.md) for the full plan.
 
