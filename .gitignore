@@ -1,0 +1,38 @@
+# Source code — never push to GitHub
+src/
+code/
+
+# Reference docs of private codebases — stay local only
+reference/
+
+# Dependencies
+node_modules/
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+
+# Build artifacts
+dist/
+build/
+*.js.map
+*.d.ts
+
+# Env / secrets
+.env
+.env.*
+!.env.example
+
+# SQLite databases
+*.db
+*.sqlite
+*.sqlite3
+
+# Local runtime data
+~/.stareha/
+logs/
+
+# OS
+.DS_Store
+Thumbs.db
