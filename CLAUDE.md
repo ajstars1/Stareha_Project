@@ -52,3 +52,39 @@ Each flow file is the single source of truth for how that system works end-to-en
 - `docs: add [feature] flow`
 - `feat: add [feature] implementation`
 - `fix: correct [feature] description`
+
+---
+
+## Skills to Use (gstack + project-specific)
+
+These skills are available in every session. Use them — don't reinvent the wheel.
+
+### Project-Specific Skills (`.claude/skills/`)
+
+| Skill | When to use |
+|-------|-------------|
+| `/stareha-doc-sync` | **End of every session** — verify all docs are updated |
+| `/stareha-stage-check` | Before moving to the next roadmap stage |
+
+### gstack Skills (globally installed)
+
+| Skill | When to use in Stareha |
+|-------|----------------------|
+| `/office-hours` | Designing a new feature or sub-feature before writing the report |
+| `/plan-eng-review` | Before coding any stage — review architecture against the flow files |
+| `/plan-ceo-review` | When questioning scope or product direction |
+| `/investigate` | Debugging daemon, collectors, SQLite, Ollama integration |
+| `/review` | Before every PR — check for LLM trust boundary violations, security |
+| `/ship` | Creating PRs — bumps version, updates CHANGELOG, pushes |
+| `/document-release` | After merging — syncs CLAUDE.md, README, architecture docs |
+| `/careful` | When touching systemd daemon, SQLite migrations, permission files |
+| `/freeze` | When debugging a specific package — prevent accidental edits elsewhere |
+| `/autoplan` | Full review pipeline before starting a new stage (runs CEO + eng + design) |
+
+### Skill Rules for This Project
+
+1. Always run `/stareha-doc-sync` before ending a session
+2. Always run `/plan-eng-review` before starting a new stage implementation
+3. Use `/investigate` for any bug — never guess at root cause
+4. Use `/careful` any time you touch the daemon or systemd service files
+5. Use `/review` before every PR, specifically checking Principle 2 (no raw data leaves device)

@@ -5,6 +5,17 @@
 
 ---
 
+## Project Skills
+
+| File | What it covers |
+|------|---------------|
+| [.claude/skills/stareha-doc-sync/SKILL.md](.claude/skills/stareha-doc-sync/SKILL.md) | End-of-session doc sync check — run every session |
+| [.claude/skills/stareha-stage-check/SKILL.md](.claude/skills/stareha-stage-check/SKILL.md) | Stage readiness gate before advancing to next stage |
+
+> gstack skills (globally installed): `/office-hours`, `/plan-eng-review`, `/investigate`, `/review`, `/ship`, `/document-release`, `/careful`, `/freeze`, `/autoplan` — see CLAUDE.md for when to use each.
+
+---
+
 ## Product
 
 | File | What it covers |
