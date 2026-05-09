@@ -2,8 +2,8 @@
 
 > Master logic file. Read before implementing. Update when logic changes.
 
-**Status:** Defined  
-**Stage:** 4
+**Status:** Updated
+**Stage:** 4–5.5
 
 ---
 
@@ -17,7 +17,7 @@ How Stareha prepares personalized next-session guidance before the user asks.
 
 Stareha does not wait to be asked.
 
-When the user ends a session, Stareha:
+When the user ends a session with `stareha done`, Stareha:
 1. Analyzes what happened
 2. Identifies gaps and weaknesses
 3. Prepares relevant guidance
@@ -28,7 +28,7 @@ When the user ends a session, Stareha:
 ## Full Flow
 
 ```
-Session ends (stareha session stop)
+Session ends (stareha done)
   ↓
 Learning run triggered
   (see Learning Flow)
@@ -49,7 +49,7 @@ Gap analysis
   - What errors were repeated?
   ↓
 Guidance plan generated
-  (local LLM → cloud LLM if needed)
+  (scripts/templates by default; local LLM if available; cloud only when explicitly allowed)
   ↓
 For Learning Goals:
   - Quizzes on weak concepts
@@ -66,8 +66,8 @@ For Work Goals:
   ↓
 Guidance stored locally
   ↓
-Next session start → briefing delivered
-  (CLI output or tray notification)
+Next `stareha learn "<goal>"` → briefing delivered
+  (CLI output now, tray notification later)
 ```
 
 ---
@@ -126,8 +126,8 @@ Relevant:
 
 | Type | When generated | Requires |
 |------|---------------|----------|
-| Quiz | After learning session | Learning profile + weak concepts |
-| Exercise | After repeated struggle | Weak concept detected |
+| Quiz | After learning session | Learning profile + weak concepts; script/local by default |
+| Exercise | After repeated struggle | Weak concept detected; cloud only when explicitly allowed |
 | Recap | Always | Session summary |
 | Next concept | When current concept understood | Learning profile |
 | Work task | After work session | Work session memory |
@@ -141,8 +141,8 @@ Relevant:
 |------|-------|
 | Gap analysis | Deterministic scripts |
 | Recap generation | Local LLM |
-| Quiz generation | Local LLM → Cloud if quality poor |
-| Exercise generation | Cloud LLM (needs creativity) |
+| Quiz generation | Scripts → Local LLM; Cloud only for explicit cloud-enabled command |
+| Exercise generation | Scripts/templates first; Cloud only for explicit cloud-enabled command |
 | Resource recommendation | Local lookup → Cloud for new topics |
 
 ---
@@ -150,12 +150,14 @@ Relevant:
 ## Trigger Rules
 
 Guidance is prepared:
-- Automatically after `stareha session stop`
+- Automatically after `stareha done`
+- Automatically after advanced `stareha session stop`
 - Nightly at 23:00 if user was active that day
-- Manually via `stareha prep tomorrow`
+- Manually via `stareha prep`
 
 Guidance is delivered:
-- On next `stareha session start`
+- On next `stareha learn "<goal>"`
+- On advanced `stareha session start`
 - On terminal open (if desktop integration enabled)
 - Via tray notification (Stage 6)
 

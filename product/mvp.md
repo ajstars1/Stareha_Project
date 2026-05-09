@@ -1,7 +1,7 @@
 # MVP Scope
 
 **Status:** Defined  
-**Stage:** 1–3 (Stages 1, 2, 3 combined = MVP)
+**Stage:** 1–5.5 (runtime, memory, guidance, optional intelligence, product wrapper)
 
 ---
 
@@ -9,7 +9,7 @@
 
 ```
 Stareha remembers what the user is working on or learning,
-explains what it learned, and suggests the next useful step.
+shows what happened in a Learning Card, and suggests the next useful step.
 ```
 
 ---
@@ -20,50 +20,52 @@ explains what it learned, and suggests the next useful step.
 |---|---------|-------|
 | 1 | Linux daemon (`stareha start/stop/status`) | 1 |
 | 2 | Terminal command learning | 2 |
-| 3 | Work/learning sessions | 2 |
+| 3 | Beginner learning sessions (`learn` / `done`) | 5.5 |
 | 4 | Local SQLite memory | 2 |
 | 5 | Memory Inbox (CLI) | 2 |
 | 6 | Learning Ledger (provenance) | 3 |
-| 7 | Session summary | 3 |
+| 7 | Learning Card | 5.5 |
 | 8 | Basic proactive suggestions | 3 |
 | 9 | Local-first summarization | 3 |
-| 10 | Cloud LLM only in talking mode | 3 |
+| 10 | AI optional: scripts by default, local LLM if available, cloud only when explicitly allowed | 5 |
 
 ---
 
 ## MVP Demo Script
 
 ```bash
+# First-time setup
+stareha setup
+
 # Start a learning session
-stareha session start "learn web development"
+stareha learn "learn web development"
 
-# User studies and codes...
-
-# Run commands through Stareha (or it observes automatically)
-stareha run npm test
+# User studies and codes normally...
+stareha note "I am confused about DOM selectors"
 
 # End session
-stareha session stop
+stareha done
 
-# Ask what was learned
-stareha what-did-you-learn today
-
-# Prep tomorrow's session
-stareha prep tomorrow
+# Return later
+stareha continue
 ```
 
-**Expected output for `stareha what-did-you-learn today`:**
+**Expected output for `stareha done`:**
 ```
-Today I learned:
-- You practiced HTML forms and CSS Flexbox.
-- You struggled with DOM selectors.
-- You searched Flexbox alignment examples repeatedly.
-- You prefer project-based exercises.
+Learning Card
+Goal  learn web development
+Project  portfolio-site  (1h 12m)
 
-Prepared for tomorrow:
-- 5-question Flexbox quiz
-- Responsive card layout exercise
-- 3 DOM selector debugging tasks
+Worked on
+- learn web development
+- Ran 24 terminal command(s)
+- Edited project files (.html x4, .css x8)
+
+Stuck on
+- I am confused about DOM selectors
+
+Next step
+-> Continue with one focused practice task for: learn web development
 ```
 
 ---
@@ -75,12 +77,17 @@ stareha start                          # Start daemon
 stareha stop                           # Stop daemon
 stareha status                         # Daemon + memory status
 
-stareha session start "<goal>"         # Begin tracked session
-stareha session stop                   # End session, trigger learning run
+stareha setup                          # Beginner setup
+stareha                                # Home screen
+stareha learn "<goal>"                 # Begin learning session
+stareha learn "<goal>" --project <path> # Begin with explicit project
+stareha note "<text>"                  # Add session/project note
+stareha done                           # End session, trigger learning run, show Learning Card
+stareha continue                       # Resume from last useful point
 
 stareha what-did-you-learn today       # Session summary
 stareha what-did-you-learn yesterday   # Prior session summary
-stareha prep tomorrow                  # Generate next-session guidance
+stareha prep                           # Generate next-session guidance
 
 stareha memory inbox                   # Show pending memory candidates
 stareha memory approve <id>            # Accept a memory
@@ -88,6 +95,9 @@ stareha memory reject <id>             # Discard a memory
 stareha memory edit <id>               # Edit a memory
 stareha memory why <id>                # Show provenance for a memory
 stareha memory forget <id>             # Delete a memory
+
+stareha session start "<goal>"         # Advanced session control
+stareha session stop                   # Advanced session stop
 ```
 
 ---
@@ -100,7 +110,8 @@ These are explicitly out of scope for MVP:
 - Browser extension
 - Android app
 - Cloud sync
-- Local LLM integration (cloud LLM only in talking mode)
+- Requiring cloud AI for the learning loop
+- Automatic cloud LLM use without explicit command-level consent
 - Multi-device support
 - Browser history connector (manual tagging only)
 
@@ -111,11 +122,11 @@ These are explicitly out of scope for MVP:
 The MVP is successful when:
 
 1. Stareha runs as a background daemon on Linux
-2. It observes terminal commands and learning sessions
-3. It generates session summaries that are accurate
+2. It observes terminal commands and learning sessions with permission
+3. It generates useful Learning Cards at session end
 4. The user can inspect every memory and its source
 5. The user can approve, reject, and edit memories
-6. Next-session guidance is generated and delivered
+6. `stareha continue` prevents the user from restarting from zero
 
 ---
 

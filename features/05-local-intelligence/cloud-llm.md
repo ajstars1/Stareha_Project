@@ -1,13 +1,13 @@
 # Cloud LLM
 
-**Status:** Concept  
-**Stage:** 3 (restricted) / 4 (exercise generation)
+**Status:** Built as restricted optional layer
+**Stage:** 5
 
 ---
 
 ## What It Is
 
-Cloud LLM (Claude via Anthropic API) is the most capable intelligence layer — used only when local capabilities are insufficient and the task value justifies the privacy tradeoff.
+Cloud LLM (Claude via Anthropic API) is the most capable intelligence layer. It is not enabled by beginner setup and is used only when a command explicitly allows cloud fallback or a future consent flag enables it for a specific feature.
 
 ---
 
@@ -15,11 +15,11 @@ Cloud LLM (Claude via Anthropic API) is the most capable intelligence layer — 
 
 | Trigger | Justification |
 |---------|--------------|
-| User opens talking mode (`stareha talk`) | User explicitly requests AI conversation |
-| Exercise generation | Creativity required, only learning profile summary sent |
-| High-quality lesson generation | Local LLM quality too low for this complexity |
-| Internet research synthesis (future) | Local models can't search the web |
-| User requests explanation | User decides the privacy tradeoff |
+| `stareha talk --cloud` | User explicitly allows Claude fallback for conversation |
+| `stareha quiz --cloud <topic>` | User explicitly allows Claude fallback for that quiz |
+| Future cloud-enabled exercise command | Creativity required, only learning profile summary sent |
+| Future internet research synthesis | Local models cannot search the web |
+| User requests cloud explanation | User decides the privacy tradeoff |
 
 ---
 
@@ -28,7 +28,7 @@ Cloud LLM (Claude via Anthropic API) is the most capable intelligence layer — 
 - Background learning runs (local LLM or scripts)
 - Session summaries (local LLM)
 - Memory candidate generation (local LLM)
-- Quiz drafts (local LLM)
+- Quiz drafts unless `--cloud` is passed
 - Pattern extraction (scripts)
 - Anything that can be done locally
 
@@ -83,11 +83,11 @@ For simple tasks that go to cloud: `claude-haiku-4-5`
 ## Talking Mode
 
 ```bash
-stareha talk
+stareha talk --cloud
 ```
 
 Opens an interactive conversation with Stareha. In this mode:
-- Cloud LLM is used
+- Local LLM is tried first; Claude is used as fallback when `--cloud` is passed and `ANTHROPIC_API_KEY` is set
 - Context sent = session summaries + relevant memories (not raw data)
 - User is informed that cloud LLM is being used
 - Conversation history stored locally only

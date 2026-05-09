@@ -171,7 +171,14 @@ def prepare_guidance(store: Store, *, with_quiz: bool = False,
 
 # ── User notes ────────────────────────────────────────────────────────────────
 
-def add_note(store: Store, text: str, tags: Optional[list[str]] = None) -> str:
+def add_note(
+    store: Store,
+    text: str,
+    tags: Optional[list[str]] = None,
+    *,
+    session_id: Optional[str] = None,
+    project: Optional[str] = None,
+) -> str:
     """Write a user_note event and store in user_notes table."""
     nid = str(uuid.uuid4())
     store._conn.execute(
@@ -183,6 +190,8 @@ def add_note(store: Store, text: str, tags: Optional[list[str]] = None) -> str:
         type="user_note",
         source="manual",
         content=json.dumps({"text": text, "tags": tags or []}),
+        project=project,
+        session_id=session_id,
         redacted=False,
     )
     store._conn.commit()

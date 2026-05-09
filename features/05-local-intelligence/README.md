@@ -51,7 +51,7 @@ Layer 2: Local LLM
 
 Layer 3: Cloud LLM
   Most capable, privacy risk, cost
-  Use only when: talking mode, high-quality generation, user approved
+  Use only when: explicit cloud-enabled command or future user consent flag
 ```
 
 ---
@@ -61,7 +61,8 @@ Layer 3: Cloud LLM
 ```
 Can a script do it? → Use script.
 Can local LLM do it privately? → Use local LLM.
-Neither? → Use cloud LLM with summary context only.
+Did the user explicitly allow cloud for this command? → Use cloud LLM with summary context only.
+Otherwise → Use script/template fallback or skip.
 ```
 
 ---

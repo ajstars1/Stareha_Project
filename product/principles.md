@@ -57,10 +57,10 @@ See: [Learning Ledger](../features/03-learning-ledger/README.md)
 
 ---
 
-## 4. Scripts First, Local LLM Second, Cloud LLM Only When Needed
+## 4. Scripts First, Local LLM Second, Cloud LLM Only With Consent
 
 ```
-Deterministic scripts → Local LLM → Cloud LLM
+Deterministic scripts → Local LLM → Cloud LLM only after explicit consent
 ```
 
 Use the cheapest, safest, most private layer that can do the job.

@@ -1,7 +1,7 @@
 # Data Flow
 
-**Status:** Defined  
-**Stage:** 0
+**Status:** Updated
+**Stage:** 5.5
 
 ---
 
@@ -70,20 +70,33 @@
                  │                    │
                  ▼                    ▼
 ┌──────────────────────┐  ┌──────────────────────────────────┐
-│   SESSION SUMMARY    │  │       PREPARED GUIDANCE          │
+│    LEARNING CARD     │  │       PREPARED GUIDANCE          │
 │                      │  │                                  │
-│  what-did-you-learn  │  │  Gap analysis → weak concepts    │
-│  work session brief  │  │  Quiz generation (local LLM)     │
-│                      │  │  Exercise generation (cloud LLM) │
-└──────────────────────┘  │  Session briefing formatter      │
+│  goal + project      │  │  Gap analysis → weak concepts    │
+│  worked on           │  │  Quiz generation (script/local)  │
+│  stuck on            │  │  Session briefing formatter      │
+│  next step           │  │                                  │
+└──────────┬───────────┘  └──────────────┬───────────────────┘
+           │                             │
+           └──────────────┬──────────────┘
+                          ▼
+                          ┌──────────────────────────────────┐
+                          │        EXPERIENCE LAYER          │
+                          │                                  │
+                          │  stareha home                    │
+                          │  stareha done                    │
+                          │  stareha continue                │
+                          │  Save / Ignore / Edit review UX  │
                           └──────────────┬───────────────────┘
                                          │
                                          ▼
                           ┌──────────────────────────────────┐
                           │      DELIVERED TO USER           │
                           │                                  │
-                          │  CLI output on session start     │
-                          │  stareha prep tomorrow           │
+                          │  Learning Card at session end    │
+                          │  Continue plan on return         │
+                          │  CLI briefing on session start   │
+                          │  stareha prep                    │
                           │  Desktop tray (Stage 6)          │
                           └──────────────────────────────────┘
 ```
@@ -104,9 +117,9 @@
 
 | Data | When | What exactly |
 |------|------|-------------|
-| Learning profile summary | Cloud LLM call | Goals + weak concepts + level (no raw data) |
-| Exercise request | Cloud LLM call | Topic + level + style (no personal data) |
-| Talking mode context | Cloud LLM call | Session summaries (no raw data) |
+| Learning profile summary | Explicit cloud-enabled command | Goals + weak concepts + level (no raw data) |
+| Quiz/exercise request | Explicit cloud-enabled command | Topic + level + style (no personal data) |
+| Talking mode context | `stareha talk --cloud` | Approved memories and summaries (no raw data) |
 | Memories (optional) | Cloud sync Stage 8 | Encrypted, summary-only, user opt-in |
 
 ---

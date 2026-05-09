@@ -62,7 +62,7 @@ User starts immediately with exactly what they need.
 ## How It Feels (Example)
 
 ```
-stareha prep tomorrow
+stareha continue
 
 Tomorrow's plan:
 
@@ -80,6 +80,8 @@ Tomorrow's plan:
 4. Stretch: DOM selectors (3 short tasks)
    (you've hit errors here 4 times this week)
 ```
+
+Prepared guidance is generated automatically by `stareha done` and can be refreshed manually with `stareha prep`. The next beginner session started with `stareha learn "<goal>"` shows any pending briefing first.
 
 ---
 

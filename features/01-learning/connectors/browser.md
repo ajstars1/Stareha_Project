@@ -2,7 +2,7 @@
 
 **Status:** Built  
 **Stage:** 1  
-**Permission required:** `browser` (enabled via `stareha init` or `stareha permissions add browser`)
+**Permission required:** `browser` (advanced opt-in via `stareha init` or `stareha permissions add browser`; not enabled by beginner setup)
 
 ---
 

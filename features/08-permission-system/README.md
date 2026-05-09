@@ -1,8 +1,8 @@
 # Feature: Permission System
 
-**Status:** Concept  
-**Stage:** 1  
-**Why it matters:** Permission is the gate between observation and invasion. Every data source requires explicit opt-in. No defaults.
+**Status:** Built
+**Stage:** 1–5.5
+**Why it matters:** Permission is the gate between observation and invasion. Setup recommends local learning sources, but the user still explicitly confirms them.
 
 ---
 
@@ -36,7 +36,8 @@ With explicit permissions:
 
 ```
 Default state: all sources OFF, all actions require approval.
-User enables sources explicitly.
+`stareha setup` recommends terminal, project file metadata, and manual notes for Learner mode.
+User confirms sources explicitly.
 User approves action types explicitly.
 ```
 
@@ -45,22 +46,25 @@ User approves action types explicitly.
 ## First-Run Experience
 
 ```
-stareha init
+stareha setup
 
-Welcome to Stareha.
+Welcome to Stareha Learn.
 
-Stareha can learn from approved sources. Nothing is enabled by default.
+Setup takes about two minutes and keeps raw data local.
 
-Which sources would you like to enable?
+What can Stareha use to understand your learning?
 
-[ ] Terminal commands (reads shell history, observes new commands)
-[ ] Project files (watches specific directories for file changes)
-[ ] Claude Code (reads AI session history and CLAUDE.md files)
-[ ] Browser (requires browser extension — Stage 7)
-[ ] App usage (observes running application names)
+Recommended:
+[x] Terminal commands and exit codes
+[x] Project file activity metadata
+[x] Manual notes you add with `stareha note`
+[ ] Browser pages you manually save
+[ ] AI chat imports
 
-Enable sources: (use space to select, enter to confirm)
+Use recommended local tracking? [Y/n]
 ```
+
+The advanced `stareha init` command still exists for direct source setup and daemon/systemd installation.
 
 ---
 

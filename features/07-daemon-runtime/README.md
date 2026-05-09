@@ -45,7 +45,7 @@ The daemon ensures:
 | Import browser history | On daemon start | ✅ |
 | Run learning run | On session end + manually | ✅ |
 | Prepare guidance | After learning run, manually | ✅ |
-| Deliver briefing | On session start | ✅ |
+| Deliver briefing | On `stareha learn` / advanced session start | ✅ |
 | Memory inbox notification | When new candidates arrive | ✅ |
 
 ---
@@ -77,7 +77,7 @@ If systemd is unavailable or the service file is not installed, it launches the 
 as a detached subprocess using `start_new_session=True`. The PID is written to
 `~/.stareha/daemon.pid` and checked by all commands.
 
-`stareha init` installs the systemd service file. Without init, direct launch is used.
+`stareha setup` installs the systemd service file as part of beginner setup. The advanced `stareha init` command can also install it. Without either setup path, direct launch is used.
 
 ---
 

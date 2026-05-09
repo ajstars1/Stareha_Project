@@ -46,7 +46,7 @@ Scans history file periodically for any commands not captured by the shell hook 
 Runs:
 - On `stareha start` (initial import)
 - Nightly at 02:00 (catch any missed commands)
-- On `stareha learn now` (manual trigger)
+- On advanced `stareha learn` / `stareha learn --force` (manual trigger)
 
 Deduplication: SHA256 hash of (cmd + timestamp) to avoid re-importing.
 
@@ -74,7 +74,7 @@ Never tracks: file contents.
 
 ## Claude Code Importer Collector
 
-Runs on session end (triggered by `stareha session stop` or idle detection).
+Runs on session end (triggered by `stareha done`, advanced `stareha session stop`, or idle detection).
 
 Scans: `~/.claude/projects/*/conversations/`
 Finds: sessions newer than `last_imported_at`

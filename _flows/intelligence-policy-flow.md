@@ -2,7 +2,7 @@
 
 > Master logic file. Read before implementing. Update when logic changes.
 
-**Status:** Defined  
+**Status:** Updated
 **Stage:** 1 (scripts), 5 (local LLM), 3 (cloud LLM)
 
 ---
@@ -30,10 +30,9 @@ Is local LLM (Ollama) available and sufficient?
   YES → Use local LLM. Done.
   NO ↓
 
-Is cloud LLM needed?
-  Is the user in talking mode OR is the task high-value?
+Did the user explicitly allow cloud for this command?
     YES → Use cloud LLM with summary context only
-    NO  → Queue for next local LLM run or skip
+    NO  → Use scripts/templates, queue for local LLM, or skip
 ```
 
 ---
@@ -92,12 +91,9 @@ Local LLM receives:
 ## Layer 3: Cloud LLM
 
 Use only when:
-- User explicitly opens talking mode (`stareha talk`)
-- Deep reasoning is required that local LLM cannot handle
-- Complex explanation is required
-- Internet research synthesis is needed
-- Local model confidence is consistently low
-- High-quality lesson/exercise generation needed (Stage 4)
+- User explicitly passes a cloud-enabled command, such as `stareha talk --cloud`
+- User explicitly requests cloud fallback for a task, such as `stareha quiz --cloud <topic>`
+- Future setup/config has recorded explicit cloud consent for a specific feature
 
 Cloud LLM receives:
 - Summaries only — never raw data
@@ -133,8 +129,10 @@ Before sending to cloud LLM:
 | Situation | Action |
 |-----------|--------|
 | Local LLM unavailable | Queue task, use scripts only |
-| Cloud LLM unavailable | Use local LLM draft, mark as low-confidence |
+| Cloud LLM unavailable | Use local LLM draft or script/template fallback |
 | All layers unavailable | Use scripts only, surface raw data to user |
+
+Beginner setup does not enable cloud AI. Cloud access requires both an API key and an explicit cloud-enabled command or future consent flag.
 
 ---
 

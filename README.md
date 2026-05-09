@@ -1,11 +1,11 @@
 # Stareha
 
-**Your AI companion that learns how you work, remembers what matters, and prepares your next step.**
+**A private learning continuity companion that remembers what you were learning and prepares your next step.**
 
-Stareha runs locally in the background, watches your terminal (with permission), learns your patterns, and prepares personalized guidance — without sending your data anywhere.
+Stareha runs locally in the background, watches approved learning signals, and turns them into session continuity — without requiring cloud AI or uploading raw data.
 
 ```
-Never restart from zero.
+Never restart your learning from zero.
 ```
 
 ---
@@ -13,55 +13,57 @@ Never restart from zero.
 ## How it feels
 
 ```
-$ stareha session start "build the auth flow"
-✓ Session started: build the auth flow
+$ stareha setup
+✓ Setup complete.
 
-... you work for 2 hours ...
+$ stareha learn "React forms"
+✓ Learning started: React forms
+Project: react-auth-app (git, high confidence)
 
-$ stareha session stop
-✓ Session ended (2h 3m)
-Learning: 3 new candidate(s) added to inbox.
-Summary: You worked on the auth middleware. Ran npm test repeatedly.
-         No errors detected in the final 30 minutes.
+... you work normally ...
 
-$ stareha what-did-you-learn today
+$ stareha note "I am confused about controlled inputs"
+✓ Note saved. This will inform your next guidance.
 
-  Events observed  47  (terminal: 47)
-  Learning runs    1 run · 47 events processed · 3 candidates generated
+$ stareha done
+✓ Learning session finished (42m)
 
-  Patterns found:  3
-    command_pattern  In auth-service, you often run `npm test` (12 times).
-    command_pattern  In auth-service, you usually run `npm run dev` then `npm test`.
-    error_fix        `npm cache clean` resolves issues after `npm install` fails (2 times).
+Learning Card
+Goal  React forms
+Project  react-auth-app  (42m)
 
-  Memories approved:  0
-  Pending in inbox:   3
+Worked on
+  - React forms
+  - Ran 18 terminal command(s)
+  - Edited project files (.tsx x6, .css x2)
 
-$ stareha memory inbox --review
-  1. [a3f9d2b1] In auth-service, you often run `npm test` (12 times).
-     (a)pprove  (r)eject  (e)dit  (s)kip: a
-     ✓ Approved
+Stuck on
+  - I am confused about controlled inputs
 
-$ stareha prep
-  Work Briefing: auth-service
-  Last session: build the auth flow (2h 3m)
-  Your workflow:
-    · In auth-service, you often run `npm test` (12 times).
-  Suggested next:
-    → Continue: build the auth flow
+Next step
+  -> Continue with one focused practice task for: React forms
+
+$ stareha continue
+Continue Learning
+Last goal  React forms
+Project  react-auth-app
+
+Next
+  1. Continue with one focused practice task for: React forms
 ```
 
 ---
 
 ## What it is
 
-Stareha is a **local-first, privacy-preserving AI companion** for developers. It observes your approved workflow, extracts patterns, and prepares personalized guidance — all on your own machine.
+Stareha is a **local-first, privacy-preserving learning companion** for developers and technical learners. It observes approved workflow signals, remembers session context, extracts useful patterns, and prepares a clear next step.
 
 **Core ideas:**
 - **Local-first** — raw data never leaves your device. Patterns and summaries stay in a local SQLite database.
 - **Transparent** — every memory has full provenance. `stareha memory why <id>` shows exactly which events caused a memory.
 - **Opt-in** — no source is watched without explicit permission. You control what Stareha sees.
-- **Three intelligence layers** — deterministic scripts first, local LLM (Ollama) second, cloud LLM (Claude) only when you explicitly allow it.
+- **Works without AI** — deterministic scripts and local SQLite power the base loop.
+- **Optional intelligence layers** — local LLM (Ollama) can improve wording and quizzes; cloud LLM (Claude) is only used by explicit cloud-enabled commands.
 
 ---
 
@@ -106,15 +108,16 @@ stareha --help
 ### 1. First-time setup
 
 ```bash
-stareha init
+stareha setup
 ```
 
-The wizard asks:
-- Enable terminal history? → **yes** — this is the core data source
-- Watch a project directory? → optional, give it a path like `~/projects`
-- Enable Claude Code history? → yes if you use Claude Code
+The beginner setup asks:
+- Which mode to use first. `Learner` is the stable alpha path.
+- Where your learning projects live, such as `~/projects`.
+- Whether to enable recommended local tracking: terminal commands, project file activity metadata, and manual notes.
+- Whether to start a first learning session now.
 
-It installs a shell hook into `~/.zshrc` (or `~/.bashrc`) and sets up the systemd service. **Restart your shell** after init so the hook activates.
+Setup installs the shell hook into `~/.zshrc` or `~/.bashrc`, stores the workspace root in `~/.stareha/config.json`, and starts the daemon when needed. **Restart your shell** once after setup so the hook activates.
 
 ### 2. Start the daemon
 
@@ -127,33 +130,55 @@ stareha status
 
 Everything from this point is automatic. The shell hook captures every command you run. The daemon stores events locally.
 
-### 4. Use a session for focused work
+### 4. Start learning
 
 ```bash
-stareha session start "fix the login bug"
+stareha learn "React forms"
 # ... work ...
-stareha session stop
+stareha note "I am confused about controlled inputs"
+stareha done
 ```
 
-Session stop automatically runs the pattern extractor and shows you what was learned.
+`stareha learn "goal"` starts a learning session, resolves the active project from the explicit path, current directory, nearest Git repo, manifest files, or recent activity, and links notes/events to that session.
 
-### 5. Review what Stareha wants to remember
+### 5. Review what Stareha noticed
 
 ```bash
-stareha memory inbox --review
+stareha done
 ```
 
-You approve, reject, or edit each candidate. Nothing is stored without your say-so.
+At session end, Stareha builds a Learning Card and offers a beginner review flow:
 
-### 6. Get tomorrow's plan
+```
+Save / Ignore / Edit / Skip
+```
+
+The advanced memory inbox is still available for full control.
+
+### 6. Continue later
 
 ```bash
-stareha prep
+stareha continue
 ```
+
+This shows the last goal, project, useful command context, and the next step so you do not restart from zero.
 
 ---
 
 ## Command reference
+
+### Beginner learning loop
+
+```bash
+stareha                         # home screen
+stareha setup                   # first-time beginner setup
+stareha learn "goal"            # start a learning session
+stareha learn "goal" --project ~/projects/app
+stareha note "text"             # add a note linked to the active session
+stareha done                    # finish session, build Learning Card, review notices
+stareha done --no-review        # finish without interactive review
+stareha continue                # resume from the last useful point
+```
 
 ### Daemon
 
@@ -172,10 +197,12 @@ stareha session stop             # end session, trigger learning run
 stareha session status           # show current session info
 ```
 
+These are advanced/internal commands. New learners should usually use `stareha learn "goal"` and `stareha done`.
+
 ### Learning
 
 ```bash
-stareha learn                    # run pattern extraction on new events
+stareha learn                    # advanced: run pattern extraction on new events
 stareha learn --force            # run on all events (ignores last-run timestamp)
 stareha what-did-you-learn today
 stareha what-did-you-learn yesterday
@@ -217,6 +244,7 @@ stareha brief                    # show latest prepared briefing
 stareha note "struggling with async/await"   # manual note (highest-signal input)
 
 stareha quiz "CSS flexbox"       # run a quiz on any topic
+stareha quiz --cloud "CSS flexbox" # explicitly allow Claude fallback
 stareha quiz                     # run the latest prepared quiz
 ```
 
@@ -233,7 +261,7 @@ stareha local-llm prompts        # export default prompts to ~/.stareha/prompts/
 
 ```bash
 stareha talk                     # conversation using local LLM + your memories
-stareha talk --cloud             # use Claude (requires ANTHROPIC_API_KEY)
+stareha talk --cloud             # explicitly use Claude fallback (requires ANTHROPIC_API_KEY)
 ```
 
 Context sent = approved memories only. Never raw events.
@@ -255,7 +283,7 @@ Stareha has three intelligence layers. The decision rule:
 ```
 Can a script do it?      → Use script.   (free, instant, zero privacy risk)
 Can local LLM do it?     → Use Ollama.   (private, runs on your machine)
-Is cloud LLM needed?     → Use Claude.   (only when you explicitly allow it)
+Did the user explicitly allow cloud? → Use Claude.   (summary-only context)
 ```
 
 **What each layer sees:**
@@ -264,7 +292,7 @@ Is cloud LLM needed?     → Use Claude.   (only when you explicitly allow it)
 |-------|----------|----------------|
 | Scripts | Raw events (already redacted) | — |
 | Local LLM | Processed summaries, redacted command lists | Raw terminal output, file contents, secrets |
-| Cloud LLM | Memory summaries, learning profile summary | Raw events, file contents, command history |
+| Cloud LLM | Summary-only task context for cloud-enabled commands | Raw events, file contents, command history |
 
 **Redaction** runs before any event is written to SQLite. API keys (`sk-*`, `ghp_*`, etc.), passwords, tokens, JWTs, database connection strings — all stripped automatically.
 
@@ -282,7 +310,7 @@ Is cloud LLM needed?     → Use Claude.   (only when you explicitly allow it)
 
 ## Local LLM setup (recommended)
 
-Without Ollama, Stareha works fully — quiz generation uses template questions, session summaries are skipped. With Ollama, everything improves and stays private.
+Without Ollama, the beginner loop still works: setup, learn, notes, Learning Cards, review, and continue all use scripts and SQLite. Quiz generation uses template questions and AI summaries are skipped. With Ollama, wording, summaries, and generated quizzes improve while staying local.
 
 ```bash
 # Install Ollama
@@ -314,11 +342,11 @@ export ANTHROPIC_API_KEY=sk-ant-...
 stareha status
 # → Cloud LLM  ✓ claude-sonnet-4-6
 
-stareha talk --cloud             # chat with Claude using your memories as context
-stareha prep --quiz              # Claude-quality quiz if Ollama unavailable
+stareha talk --cloud             # chat with Claude using approved memories as context
+stareha quiz --cloud "Flexbox"   # explicitly allow Claude fallback for this quiz
 ```
 
-Context sent to Claude = memory summaries only. Never raw events. Never command history.
+Cloud is not enabled by setup. Context sent to Claude is summary-only and command-specific. Never raw events. Never command history.
 
 ---
 
@@ -331,6 +359,7 @@ Context sent to Claude = memory summaries only. Never raw events. Never command 
 | Daemon | Python threading + systemd user service |
 | Terminal capture | Shell hook (zsh/bash) + inotify for files |
 | Pattern extraction | Deterministic scripts |
+| Product experience | Beginner CLI wrapper + Learning Card |
 | Local LLM | Ollama via httpx |
 | Cloud LLM | Anthropic Claude via SDK |
 | CLI | Click + Rich |
@@ -365,6 +394,13 @@ Stareha_Project/
 │       │   ├── learning_runner.py # Orchestrates extraction + writes candidates
 │       │   ├── ledger.py         # Learning run tracking + what-did-you-learn
 │       │   └── summarizer.py     # Session summary + memory enrichment
+│       ├── experience/
+│       │   ├── mode_presets.py   # Learner/Companion/Researcher presets
+│       │   ├── project_resolver.py # Active project detection
+│       │   ├── learning_card.py  # Session-end Learning Card
+│       │   ├── review_flow.py    # Save/Ignore/Edit review UX
+│       │   ├── continuation.py   # `stareha continue`
+│       │   └── home.py           # no-argument home screen
 │       ├── memory/
 │       │   └── manager.py        # approve/reject/forget/why/list/search
 │       ├── guidance/
@@ -401,6 +437,7 @@ Stareha_Project/
 | 3 | ✅ Complete | Learning ledger, audit log, feedback-gated confidence, `what-did-you-learn` |
 | 4 | ✅ Complete | Weak concept detection, briefing builder, quiz generation, `prep`/`brief`/`quiz`/`note` |
 | 5 | ✅ Complete | Intelligence policy router, Ollama integration, `talk` mode, session summarizer |
+| 5.5 | ✅ Complete | Product experience wrapper: `setup`, home, `learn "goal"`, `done`, `continue`, Learning Card |
 | 6 | 🔨 Next | Desktop companion: REST API, web panel, system tray, desktop notifications |
 | 7 | Planned | Browser extension: research session tracking, "remember this page" |
 | 8 | Planned | Cloud memory: encrypted cross-device sync (summaries only) |

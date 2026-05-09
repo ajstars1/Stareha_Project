@@ -66,7 +66,7 @@ Weak concept + skill level + learning style
   ↓
 Exercise template selected (based on concept type)
   ↓
-Exercise generated (cloud LLM — exercises need creativity)
+Exercise generated (script/template or local LLM by default; cloud only with explicit consent)
   ↓
 Starter file created if needed
   ↓
@@ -103,12 +103,12 @@ Completion updates the learning profile skill level.
 
 ## Intelligence Layer
 
-Cloud LLM is used for exercise generation — this is one of the justified cloud LLM use cases:
+Cloud LLM may be used for future exercise generation only after explicit user consent:
 - Exercises require creativity
 - Generic exercises waste the user's time
-- Quality matters more than privacy here (no raw data sent, just learning profile summary)
+- No raw data is sent, only a learning profile summary
 
-Context sent to cloud LLM:
+Context sent to cloud LLM after consent:
 ```
 Topic: CSS Flexbox
 User level: struggling (searched 6 times, 2 incomplete exercises)

@@ -1,7 +1,7 @@
 # System Architecture
 
-**Status:** Defined  
-**Stage:** 0
+**Status:** Updated
+**Stage:** 5.5
 
 ---
 
@@ -11,10 +11,15 @@
 AgentOS Continuum
 │
 ├── Stareha Companion (user-facing identity)
-│   ├── Chat / talking mode (cloud LLM)
+│   ├── Stareha Learn beginner loop
+│   │   ├── setup
+│   │   ├── learn
+│   │   ├── note
+│   │   ├── done / Learning Card
+│   │   └── continue
+│   ├── Chat / talking mode (local LLM first, cloud only with --cloud)
 │   ├── Mentor mode (learning guidance)
-│   ├── Work companion mode (developer briefings)
-│   └── Suggestion personality
+│   └── Work companion mode (developer briefings)
 │
 ├── Local Runtime (daemon)
 │   ├── Linux daemon (systemd user service)
@@ -34,6 +39,15 @@ AgentOS Continuum
 │   ├── Claude Code memory (decisions, bugs, tasks)
 │   ├── App usage memory
 │   └── Learning profile
+│
+├── Experience Layer
+│   ├── Mode presets
+│   ├── Active project resolver
+│   ├── Project registry
+│   ├── Learning Card builder
+│   ├── Beginner review flow
+│   ├── Continue plan builder
+│   └── Home screen
 │
 ├── Learning Ledger (trust layer)
 │   ├── Raw event log (ledger_events — immutable)
@@ -95,7 +109,9 @@ User approves → approved memories
   ↓
 Prepared guidance engine
   ↓
-Session briefing delivered
+Experience layer
+  ↓
+Learning Card / continue plan / briefing delivered
 ```
 
 ---
@@ -121,7 +137,7 @@ Session briefing delivered
 | Event store | SQLite | Simple, file-based, no server needed |
 | Pattern extractor | Python | Easy regex, fast iteration |
 | Local LLM | Ollama | Easy setup, model flexibility |
-| Cloud LLM | Anthropic Claude API | Best reasoning for exercise generation |
+| Cloud LLM | Anthropic Claude API | Explicit opt-in for talking mode and cloud-enabled tasks |
 | CLI | Python Click or Rust Clap | Fast, composable |
 | Desktop UI | Tauri | Lightweight, Rust-backed |
 | Browser Extension | Web Extensions API | Cross-browser |

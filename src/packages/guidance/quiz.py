@@ -110,7 +110,7 @@ def generate_quiz(
     n: int = 5,
     context: str = "",
     signals: Optional[list[str]] = None,
-    allow_cloud: bool = True,
+    allow_cloud: bool = False,
 ) -> dict:
     """
     Generate a quiz. Always returns a dict — never raises, never returns None.

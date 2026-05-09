@@ -37,7 +37,9 @@ Timing matters for the companion experience:
 ## Session-End Detection
 
 ```
-User runs stareha session stop
+User runs stareha done
+  OR
+User runs advanced stareha session stop
   OR
 30 minutes of no file edits AND no terminal commands
   ↓
@@ -96,8 +98,9 @@ If system is under load (CPU > 70%), lower priority tasks are deferred.
 ## Manual Triggers
 
 ```bash
-stareha learn now           # Trigger learning run immediately
-stareha prep now            # Trigger guidance preparation immediately
+stareha learn               # Advanced: trigger learning run on new events
+stareha learn --force       # Advanced: trigger learning run on all events
+stareha prep                # Trigger guidance preparation immediately
 stareha import claude-code  # Force Claude Code import
 ```
 

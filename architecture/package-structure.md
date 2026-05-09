@@ -1,7 +1,7 @@
 # Package Structure
 
-**Status:** Defined  
-**Stage:** 0
+**Status:** Updated
+**Stage:** 5.5
 
 ---
 
@@ -20,6 +20,7 @@ stareha/
 │   ├── core/                   # Shared types, DB schema, config
 │   ├── collectors/             # Event collectors (terminal, files, claude-code, browser)
 │   ├── intelligence/           # Scripts layer, local LLM, cloud LLM wrappers
+│   ├── experience/             # Beginner product flows above the engine
 │   ├── memory/                 # Workflow memory + learning ledger
 │   ├── guidance/               # Prepared guidance engine
 │   ├── permissions/            # Permission system
@@ -51,6 +52,15 @@ stareha/
 - `local-llm/` — Ollama client, prompt templates, task routing
 - `cloud-llm/` — Anthropic SDK client, context builder, usage tracker
 
+### `packages/experience`
+- `mode_presets.py` — Learner, Companion, and Researcher presets
+- `project_resolver.py` — active project detection without scanning whole workspaces
+- `project_registry.py` — known project metadata stored in the existing meta table
+- `learning_card.py` — session-end learner-facing artifact
+- `review_flow.py` — beginner review language over memory candidates
+- `continuation.py` — `stareha continue` plan builder
+- `home.py` — no-argument `stareha` home screen
+
 ### `packages/memory`
 - Event store writes/reads
 - Memory candidate creation
@@ -73,7 +83,9 @@ stareha/
 
 ### `apps/cli`
 - All `stareha` commands
-- Talks to daemon via IPC or direct package imports
+- Beginner flow: `setup`, home, `learn`, `note`, `done`, `continue`
+- Advanced flow: daemon, session, memory, ledger, permissions, LLM tooling
+- Talks to daemon via local HTTP or direct package imports
 - Formatted terminal output
 
 ### `apps/daemon`

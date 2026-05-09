@@ -1,18 +1,36 @@
 # Interface: CLI
 
-**Status:** Concept  
-**Stage:** 1  
-**Priority:** Build this first.
+**Status:** Built
+**Stage:** 1–5.5
+**Priority:** Primary MVP interface.
 
 ---
 
 ## What It Is
 
-The `stareha` CLI is the primary interface for MVP. All Stareha features are accessible via command line.
+The `stareha` CLI is the primary interface for MVP. It has two layers:
+
+- Beginner product flow: human learning actions such as `setup`, `learn`, `note`, `done`, and `continue`.
+- Advanced controls: daemon, sessions, memory, ledger, permissions, and LLM tooling.
 
 ---
 
 ## Command Map
+
+### Beginner Learning Flow
+
+```bash
+stareha                                # Home screen
+stareha setup                          # Beginner first-run setup
+stareha learn "<goal>"                 # Start a learning session
+stareha learn "<goal>" --project <path> # Start with explicit project
+stareha note "<text>"                  # Add note to active session/project
+stareha done                           # End session, show Learning Card, review notices
+stareha done --no-review               # End session without interactive review
+stareha continue                       # Resume from last useful point
+```
+
+The beginner flow hides internal terms like daemon, memory candidates, ledger, and prepared guidance until the user asks for them.
 
 ### Daemon
 
@@ -31,14 +49,18 @@ stareha session stop                  # End session, trigger learning run
 stareha session status                # Current session info
 ```
 
+These commands remain available for advanced/manual control. New learner-facing flows should use `stareha learn "<goal>"` and `stareha done`.
+
 ### Learning & Guidance
 
 ```bash
 stareha what-did-you-learn today      # Today's session summary
 stareha what-did-you-learn yesterday  # Yesterday's session summary
-stareha prep tomorrow                 # Prepare next-session guidance
-stareha prep now                      # Force guidance preparation
-stareha learn now                     # Force learning run
+stareha prep                          # Prepare next-session guidance
+stareha prep --quiz                   # Prepare guidance plus quiz
+stareha learn                         # Advanced: force learning run on new events
+stareha learn --force                 # Advanced: force learning run on all events
+stareha ledger                        # Learning run audit log
 ```
 
 ### Memory Management
@@ -74,7 +96,8 @@ stareha permissions list-actions      # Show action permissions
 ### Quiz & Exercises
 
 ```bash
-stareha quiz <concept>               # Start a quiz
+stareha quiz <concept>               # Start a local/script-backed quiz
+stareha quiz --cloud <concept>       # Explicitly allow Claude fallback
 stareha exercise <id>                # View an exercise
 stareha exercise complete <id>       # Mark exercise done
 stareha exercise skip <id>           # Skip exercise
@@ -84,7 +107,8 @@ stareha exercise list                # List pending exercises
 ### Talking Mode
 
 ```bash
-stareha talk                         # Open cloud LLM conversation mode
+stareha talk                         # Open local LLM conversation mode
+stareha talk --cloud                 # Explicitly allow Claude fallback
 ```
 
 ### Profile
@@ -101,7 +125,8 @@ stareha note "<text>"                # Add manual context note
 stareha config list                  # Show all config
 stareha config set <key> <value>     # Set config value
 stareha config redact add <pattern>  # Add custom redaction pattern
-stareha init                         # First-time setup wizard
+stareha setup                        # Beginner first-time setup wizard
+stareha init                         # Advanced legacy setup wizard
 ```
 
 ### Utilities
@@ -128,7 +153,7 @@ stareha import claude-code           # Force Claude Code import
 
 ## Terminal Integration
 
-The shell hook is added to `~/.zshrc` (or `~/.bashrc`) by `stareha init`:
+The shell hook is added to `~/.zshrc` or `~/.bashrc` by `stareha setup` or the advanced `stareha init`:
 
 ```bash
 # Stareha shell integration

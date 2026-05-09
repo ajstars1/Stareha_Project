@@ -1,7 +1,7 @@
 # Session Briefing
 
-**Status:** Concept  
-**Stage:** 4
+**Status:** Built
+**Stage:** 4–5.5
 
 ---
 
@@ -23,10 +23,11 @@ The briefing is the "Jarvis moment" — the product's highest-value UX. If the b
 
 | When | How |
 |------|-----|
-| `stareha session start` | CLI output |
+| `stareha learn "<goal>"` | CLI output |
+| Advanced `stareha session start` | CLI output |
 | First terminal open (if daemon integration enabled) | CLI message |
 | `stareha what-did-you-learn today` | On demand |
-| `stareha prep tomorrow` | On demand, for next session |
+| `stareha prep` | On demand, for next session |
 | Desktop tray (Stage 6) | Notification |
 
 ---
@@ -115,7 +116,7 @@ Plan construction (recap + quiz + exercise + stretch)
   ↓
 Format for CLI
   ↓
-Store in prepared_guidance (ready for next session start)
+Store in prepared_guidance (ready for next `stareha learn "<goal>"`)
 ```
 
 ---

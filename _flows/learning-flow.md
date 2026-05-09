@@ -2,8 +2,8 @@
 
 > Master logic file. Read before implementing. Update when logic changes.
 
-**Status:** Defined  
-**Stage:** 2–3
+**Status:** Updated
+**Stage:** 2–5.5
 
 ---
 
@@ -41,6 +41,8 @@ Memory written to store (with full provenance)
 Learning profile updated
   ↓
 Prepared Guidance triggered (async, at end of session)
+  ↓
+Experience layer builds Learning Card / continue plan
 ```
 
 ---
@@ -55,7 +57,7 @@ Prepared Guidance triggered (async, at end of session)
 | Browser visits | Chrome/Firefox SQLite file reader (no extension) | Daemon start | ✅ Built |
 | Browser searches | `keyword_search_terms` table (Chrome) | Daemon start | ✅ Built |
 | User notes | `stareha note "..."` command | Manual | ✅ Built |
-| User goals | Session start goal text | On `session start` | ✅ Built |
+| User goals | Learning/session goal text | On `stareha learn "<goal>"` or advanced `session start` | ✅ Built |
 | App usage | App usage monitor | Periodic | Planned |
 
 **Browser note:** Stage 7 browser extension remains planned for real-time events ("remember this page", page summaries). The file reader provides full visit history without an extension.
@@ -90,9 +92,10 @@ Factors:
 ## Learning Run Trigger
 
 Learning runs happen:
-1. On `stareha session stop`
-2. On system idle (after 30 min of inactivity)
-3. Manually via `stareha learn now`
+1. On `stareha done`
+2. On advanced `stareha session stop`
+3. On system idle (after 30 min of inactivity)
+4. Manually via advanced `stareha learn` / `stareha learn --force`
 
 ---
 
@@ -103,6 +106,7 @@ Learning runs happen:
 - User must approve before memory is written (MVP: auto-approve with inbox review)
 - If confidence < 0.5, send to inbox, never auto-approve
 - Redaction runs before any other step — no exceptions
+- Beginner UX should say "what Stareha noticed", "Save", "Ignore", and "Learning Card" instead of memory-candidate internals
 
 ---
 

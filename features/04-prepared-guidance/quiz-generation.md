@@ -1,7 +1,7 @@
 # Quiz Generation
 
-**Status:** Concept  
-**Stage:** 4
+**Status:** Built
+**Stage:** 4–5
 
 ---
 
@@ -51,11 +51,12 @@ For each concept to quiz:
   - Select concept (highest score first)
   - Determine difficulty from learning profile skill level
   - Generate 5 questions
-    (local LLM draft → cloud LLM for quality if needed)
+    (template/scripts always work; local LLM improves quality if available)
+  - Use cloud LLM only for an explicit cloud-enabled command such as `stareha quiz --cloud <topic>`
   - Format as CLI-friendly or markdown output
   - Store quiz in prepared_guidance table
   ↓
-Quiz available at next session start
+Quiz available in `stareha quiz` or next-session guidance
 ```
 
 ---
@@ -98,8 +99,8 @@ After the user answers:
 | Task | Layer |
 |------|-------|
 | Question selection | Scripts (concept + difficulty rules) |
-| Question generation | Local LLM (llama3/mistral) |
-| Quality check | Cloud LLM if local quality < threshold |
+| Question generation | Template/scripts by default; local LLM if available |
+| Cloud fallback | Only when the user passes an explicit cloud-enabled command such as `stareha quiz --cloud <topic>` |
 
 ---
 

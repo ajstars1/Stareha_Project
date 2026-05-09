@@ -2,8 +2,8 @@
 
 > Master logic file. Read before implementing. Update when logic changes.
 
-**Status:** Defined  
-**Stage:** 1
+**Status:** Updated
+**Stage:** 1–5.5
 
 ---
 
@@ -25,17 +25,15 @@ Act with permission only.
 ## Source Permission Flow
 
 ```
-First run (stareha init)
+First run (stareha setup)
   ↓
-Stareha lists all available sources:
-  - Terminal history (~/.zsh_history / ~/.bash_history)
-  - Project files (specific directories)
-  - Claude Code conversation history
-  - Browser history (requires extension)
-  - App usage (process list)
+Stareha asks for learner-friendly local sources:
+  - Terminal commands and exit codes
+  - Project file activity metadata
+  - Manual notes
+  - Optional future sources such as saved browser pages or AI chat imports
   ↓
-User selects which sources to enable
-  (default: none enabled — explicit opt-in required)
+User confirms recommended local tracking or customizes sources
   ↓
 Permissions written to ~/.stareha/permissions.json
   ↓
@@ -46,6 +44,8 @@ User can enable/disable at any time:
   stareha permissions remove browser
   stareha permissions list
 ```
+
+The advanced `stareha init` path still exists for direct source setup.
 
 ---
 

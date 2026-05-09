@@ -1,6 +1,6 @@
 # Roadmap
 
-**Current Stage:** Stage 0 — Concept Validated  
+**Current Stage:** Stage 5.5 complete — product wrapper built; Stage 6 next
 **Platform:** Linux-first
 
 ---
@@ -196,7 +196,7 @@ Features:
 - [x] `packages/intelligence/summarizer.py` — session summary + memory enrichment via router
   - `summarize_session()` — 2-3 sentence summary after session stop (local LLM only, no cloud)
   - `enrich_memory_candidate()` — richer natural-language memory text (local LLM only)
-- [x] Quiz routing updated — `generate_quiz()` now: local LLM → cloud LLM → template (was: cloud → template)
+- [x] Quiz routing updated — `generate_quiz()` now: local LLM → template by default; cloud only when explicitly allowed
 - [x] Learning runner updated — `_enrich_candidates()` runs enrichment when Ollama available
 - [x] `stareha status` — shows Local LLM + Cloud LLM availability with clear install hints
 - [x] `stareha local-llm status` — full intelligence policy status + prompt template list
@@ -216,6 +216,49 @@ Acceptance test passed: all commands work correctly with no Ollama and no API ke
 Relevant docs:
 - [Local Intelligence](../features/05-local-intelligence/README.md)
 - [Local LLM](../features/05-local-intelligence/local-llm.md)
+
+---
+
+## Stage 5.5 — Stareha Learn Product Wrapper
+**Status:** Complete
+
+Goal: Turn the internal engine into a beginner-facing learning continuity product.
+
+Features:
+- [x] No-argument `stareha` home screen
+- [x] `stareha setup` beginner wizard
+  - Learner mode recommended and stable alpha
+  - Workspace root captured without scanning every file
+  - Recommended tracking enables terminal commands, project file metadata, and manual notes
+- [x] `stareha learn "<goal>"` starts a learning session
+  - Resolves active project from explicit path, current directory, nearest Git repo, manifest files, workspace root, or recent activity
+  - Adds resolved active project to file metadata watch paths when file tracking is enabled
+  - Shows pending briefing before starting
+- [x] `stareha note "<text>"` accepts unquoted multi-word notes and links them to the active session/project
+- [x] `stareha done` ends the session, runs learning, prepares guidance, and prints a Learning Card
+- [x] Beginner review flow: "Save / Ignore / Edit / Skip" over pending memory candidates
+- [x] `stareha continue` resumes from the last useful point
+- [x] `packages/experience/` layer added above the existing engine
+  - `mode_presets.py`
+  - `project_resolver.py`
+  - `project_registry.py`
+  - `learning_card.py`
+  - `review_flow.py`
+  - `continuation.py`
+  - `home.py`
+- [x] Cloud LLM is no longer implicit for quiz generation; cloud fallback requires an explicit cloud-enabled command
+
+Success:
+```
+The first-run product loop is setup -> learn -> note -> done -> continue.
+Internal commands still exist, but normal learners do not need to understand them.
+```
+
+Acceptance test passed with an isolated temporary HOME: `stareha` home screen, `stareha learn React forms`, `stareha note ...`, `stareha done --no-review`, and `stareha continue`.
+
+Relevant docs:
+- [CLI Interface](../features/09-interfaces/cli.md)
+- [MVP](mvp.md)
 
 ---
 

@@ -13,13 +13,12 @@ from pathlib import Path
 import click
 from rich.console import Console
 from rich.table import Table
-from rich import box
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 from packages.core.config import load_config, save_config, ensure_dirs
 from packages.core.db import Store
-from packages.permissions import can_collect, enable_source, list_permissions
+from packages.permissions import enable_source, list_permissions
 from packages.intelligence.learning_runner import run_learning
 from packages.intelligence.ledger import (
     what_did_you_learn, recent_runs, feedback_stats, get_rejection_counts,
@@ -29,13 +28,19 @@ from packages.memory.manager import (
     get_memory_why, list_memories, search_memories,
     get_sources, memory_stats,
 )
-from packages.guidance.detector import detect_weak_concepts
-from packages.guidance.briefing import format_briefing_cli, build_work_briefing, build_learning_briefing
+from packages.guidance.briefing import format_briefing_cli
 from packages.guidance.quiz import generate_quiz, run_quiz_interactive
 from packages.guidance.prep import (
     prepare_guidance, get_pending, get_all_guidance,
-    mark_delivered, mark_completed, mark_skipped, add_note,
+    mark_delivered, mark_completed, add_note,
 )
+from packages.experience.continuation import build_continue_plan, format_continue_plan_cli
+from packages.experience.home import build_home, format_home_cli
+from packages.experience.learning_card import build_learning_card, format_learning_card_cli
+from packages.experience.mode_presets import DEFAULT_MODE, MODE_PRESETS
+from packages.experience.project_registry import remember_project
+from packages.experience.project_resolver import resolve_project
+from packages.experience.review_flow import review_notices
 
 console = Console()
 
@@ -118,10 +123,99 @@ def _uptime(pid: int) -> str:
 
 # ── CLI root ──────────────────────────────────────────────────────────────────
 
-@click.group()
-def cli():
+@click.group(invoke_without_command=True)
+@click.pass_context
+def cli(ctx):
     """Stareha — your AI companion that learns how you work."""
-    pass
+    if ctx.invoked_subcommand is not None:
+        return
+    store = _get_store()
+    try:
+        console.print(format_home_cli(build_home(store)))
+    finally:
+        store.close()
+
+
+# ── stareha setup ─────────────────────────────────────────────────────────────
+
+@cli.command()
+@click.pass_context
+def setup(ctx):
+    """Beginner setup for Stareha Learn."""
+    console.print("\n[bold]Welcome to Stareha Learn.[/bold]")
+    console.print("[dim]Setup takes about two minutes and keeps raw data local.[/dim]\n")
+
+    ensure_dirs()
+
+    console.print("[bold]How do you want to use Stareha first?[/bold]\n")
+    console.print("1. Learner (Recommended)")
+    console.print("   For programming, AI, technical skills, or project-based study.")
+    console.print("2. Companion (Experimental)")
+    console.print("   For broader work continuity and personal projects.")
+    console.print("3. Researcher (Experimental)")
+    console.print("   For reading, research sessions, notes, and synthesis.\n")
+    mode_choice = click.prompt(
+        "Choose mode",
+        type=click.Choice(["1", "2", "3"], case_sensitive=False),
+        default="1",
+        show_default=True,
+    )
+    mode = {"1": "learner", "2": "companion", "3": "researcher"}[mode_choice]
+    preset = MODE_PRESETS.get(mode, MODE_PRESETS[DEFAULT_MODE])
+    if mode != DEFAULT_MODE:
+        console.print("[yellow]This mode is experimental. Learner is the stable alpha path.[/yellow]")
+
+    default_workspace = Path.home() / "projects"
+    if not default_workspace.exists():
+        default_workspace = Path.cwd()
+    console.print("\n[bold]Where do you keep your learning projects?[/bold]")
+    console.print("[dim]Use the parent folder, not one specific project.[/dim]")
+    workspace = click.prompt(
+        "Workspace folder",
+        default=str(default_workspace),
+        show_default=True,
+    )
+    workspace_path = str(Path(workspace).expanduser())
+
+    console.print("\n[bold]What can Stareha use to understand your learning?[/bold]")
+    console.print("[dim]Recommended: terminal commands, project file metadata, and manual notes.[/dim]")
+    use_recommended = click.confirm("Use recommended local tracking?", default=True)
+    if use_recommended:
+        enable_source("terminal", watch=True)
+        enable_source("files", path=workspace_path)
+        _install_shell_hook()
+    else:
+        if click.confirm("Track terminal commands and exit codes?", default=True):
+            enable_source("terminal", watch=True)
+            _install_shell_hook()
+        if click.confirm("Track project file activity metadata?", default=True):
+            enable_source("files", path=workspace_path)
+
+    config = load_config()
+    watched_paths = list(dict.fromkeys([*config.watched_paths, workspace_path]))
+    save_config({
+        "mode": mode,
+        "mode_status": preset["status"],
+        "workspace_roots": [workspace_path],
+        "watched_paths": watched_paths,
+    })
+
+    try:
+        _install_systemd_service()
+    except Exception:
+        console.print("[dim]systemd user service not available; direct daemon start will be used.[/dim]")
+
+    console.print("\n[bold green]Setup complete.[/bold green]")
+    console.print("[dim]Restart your shell once so the terminal hook is active.[/dim]")
+
+    if click.confirm("Start your first learning session now?", default=False):
+        goal = click.prompt("What are you learning?")
+        ctx.invoke(learn, goal=goal, project=None, force=False)
+    else:
+        console.print('\nStart later with: [bold]stareha learn "React forms"[/bold]\n')
+
+    if not _daemon_pid():
+        ctx.invoke(start)
 
 
 # ── stareha init ──────────────────────────────────────────────────────────────
@@ -407,6 +501,60 @@ def session_stop():
     store.close()
 
 
+@cli.command()
+@click.option("--review/--no-review", default=True, help="Review what Stareha noticed.")
+def done(review):
+    """Finish the current learning session and show a Learning Card."""
+    store = _get_store()
+    active = store.get_active_session()
+    if not active:
+        console.print("[yellow]No active learning session.[/yellow]")
+        console.print('[dim]Start one with `stareha learn "React forms"`.[/dim]')
+        store.close()
+        return
+
+    store.end_session(active["id"])
+    elapsed = int((time.time() - active["started_at"]) / 60)
+    console.print(f"[green]✓[/green] Learning session finished ({elapsed}m)")
+
+    with console.status("[dim]Building your Learning Card...[/dim]"):
+        written = run_learning(store, session_id=active["id"])
+        prepare_guidance(store, session_id=active["id"])
+        card = build_learning_card(store, active["id"])
+
+    if card:
+        console.print(format_learning_card_cli(card))
+    if written:
+        console.print(f"[dim]{written} new thing(s) noticed.[/dim]")
+
+    if review:
+        review_notices(
+            store,
+            console,
+            since=active["started_at"],
+            project=active["project"],
+        )
+
+    store.close()
+
+
+@cli.command("continue")
+def continue_cmd():
+    """Resume from the last useful learning point."""
+    store = _get_store()
+    plan = build_continue_plan(store)
+    store.close()
+
+    if not plan:
+        console.print("[dim]No previous learning session yet.[/dim]")
+        console.print('[dim]Start with `stareha learn "React forms"`.[/dim]')
+        return
+
+    console.print(format_continue_plan_cli(plan))
+    if plan.get("project"):
+        console.print(f"[dim]Project path: {plan['project']}[/dim]")
+
+
 @session.command("status")
 def session_status():
     """Show current session."""
@@ -573,9 +721,54 @@ def _fmt_ts(ts: int) -> str:
 # ── stareha learn ─────────────────────────────────────────────────────────────
 
 @cli.command()
-@click.option("--force", is_flag=True, help="Run even if few events since last run.")
-def learn(force):
-    """Run a learning pass — extract patterns from events and populate inbox."""
+@click.argument("goal", nargs=-1)
+@click.option("--project", "project", default=None, help="Project path for this session.")
+@click.option("--force", is_flag=True, help="Run extraction even if few events since last run.")
+def learn(goal, project, force):
+    """Start a learning session, or run extraction when no goal is provided."""
+    if isinstance(goal, (tuple, list)):
+        goal_text = " ".join(goal).strip()
+    else:
+        goal_text = (goal or "").strip()
+
+    if goal_text:
+        store = _get_store()
+        active = store.get_active_session()
+        if active:
+            console.print("[yellow]A learning session is already active.[/yellow]")
+            console.print("[dim]Run `stareha done` before starting another one.[/dim]")
+            store.close()
+            return
+
+        resolution = resolve_project(project, store=store)
+        remember_project(store, resolution)
+        project_path = resolution.path if resolution else None
+        if project_path and list_permissions()["sources"].get("files", {}).get("enabled"):
+            enable_source("files", path=project_path)
+            config = load_config()
+            watched_paths = list(dict.fromkeys([*config.watched_paths, project_path]))
+            save_config({"watched_paths": watched_paths})
+
+        pending = get_pending(store, gtype="briefing")
+        if pending:
+            latest = pending[0]
+            console.print(format_briefing_cli(latest["content"]))
+            mark_delivered(store, latest["id"])
+
+        store.start_session(goal=goal_text, type="learning", project=project_path)
+        store.close()
+
+        console.print(f"[green]✓[/green] Learning started: [bold]{goal_text}[/bold]")
+        if resolution:
+            console.print(
+                f"[dim]Project: {resolution.name} "
+                f"({resolution.source}, {resolution.confidence} confidence)[/dim]"
+            )
+        console.print("[dim]Work normally. Add notes with `stareha note \"...\"`.[/dim]")
+        console.print("[dim]Finish with `stareha done`.[/dim]")
+        return
+
+    # Advanced/internal behavior: run a standalone learning pass.
     store = _get_store()
     with console.status("[dim]Analysing events...[/dim]"):
         written = run_learning(store, force=force)
@@ -938,15 +1131,16 @@ def brief():
 
 
 @cli.command()
+@click.option("--cloud", is_flag=True, help="Allow Claude fallback if local LLM is unavailable.")
 @click.argument("topic", required=False)
-def quiz(topic):
+def quiz(topic, cloud):
     """Run an interactive quiz — on a topic or from the latest prepared quiz."""
     store = _get_store()
 
     if topic:
         # Generate on the fly for the requested topic
         with console.status("[dim]Generating quiz...[/dim]"):
-            quiz_data = generate_quiz(topic, n=5)
+            quiz_data = generate_quiz(topic, n=5, allow_cloud=cloud)
     else:
         # Use latest prepared quiz
         pending_q = get_pending(store, gtype="quiz")
@@ -975,14 +1169,32 @@ def quiz(topic):
 
 
 @cli.command()
-@click.argument("text")
+@click.argument("text", nargs=-1)
 def note(text):
     """Add a manual note — e.g. `stareha note \"struggling with async/await\"`."""
+    if isinstance(text, (tuple, list)):
+        note_text = " ".join(text).strip()
+    else:
+        note_text = (text or "").strip()
+    if not note_text:
+        console.print("[yellow]Write a note after the command.[/yellow]")
+        console.print('[dim]Example: `stareha note "I am confused about controlled inputs"`[/dim]')
+        return
+
     store = _get_store()
-    nid = add_note(store, text)
+    active = store.get_active_session()
+    add_note(
+        store,
+        note_text,
+        session_id=active["id"] if active else None,
+        project=active["project"] if active else None,
+    )
     store.close()
     console.print(f"[green]✓[/green] Note saved. This will inform your next guidance.")
-    console.print(f"[dim]Tip: run `stareha prep` to regenerate your briefing.[/dim]")
+    if active:
+        console.print("[dim]Linked to the current learning session.[/dim]")
+    else:
+        console.print(f"[dim]Tip: run `stareha prep` to regenerate your briefing.[/dim]")
 
 
 # ── stareha local-llm ────────────────────────────────────────────────────────

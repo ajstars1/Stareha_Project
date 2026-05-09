@@ -36,7 +36,8 @@ During session:
 
 Work session ends:
   30 minutes of inactivity → session_ended event
-  OR: stareha session stop
+  OR: stareha done
+  OR: advanced stareha session stop
   ↓
 Learning run triggered
 ```
@@ -57,23 +58,25 @@ Learning run triggered
 
 ---
 
-## Explicit Work Sessions
+## Explicit Learning Sessions
 
-The user can also explicitly tag sessions:
+The beginner product flow explicitly tags sessions:
 
 ```bash
-stareha session start "build memory candidate pipeline"
+stareha learn "build memory candidate pipeline"
 # ... user works ...
-stareha session stop
+stareha done
 ```
 
 This tags all events during the session with the explicit goal, increasing the quality of extracted memories.
+
+Advanced users can still use `stareha session start` and `stareha session stop` directly.
 
 ---
 
 ## Example Output
 
-After a work session, running `stareha what-did-you-learn today`:
+After a learning session, `stareha done` shows a Learning Card. Advanced users can also run `stareha what-did-you-learn today`:
 
 ```
 Today in agent-os:

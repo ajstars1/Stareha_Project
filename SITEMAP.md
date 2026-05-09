@@ -53,7 +53,7 @@
 | [src/packages/intelligence/scripts/pattern\_extractor.py](src/packages/intelligence/scripts/pattern_extractor.py) | Deterministic extractors — frequency, sequences, error-fix, project context, research topics (browser), Claude Code patterns |
 | [src/packages/intelligence/learning\_runner.py](src/packages/intelligence/learning_runner.py) | Orchestrates extraction — dedup, feedback gate, writes candidates |
 | [src/packages/intelligence/ledger.py](src/packages/intelligence/ledger.py) | Learning run tracking — `what_did_you_learn`, feedback stats |
-| [src/packages/intelligence/router.py](src/packages/intelligence/router.py) | **Policy router** — scripts → local LLM → cloud LLM |
+| [src/packages/intelligence/router.py](src/packages/intelligence/router.py) | **Policy router** — scripts → local LLM → cloud LLM only when explicitly allowed |
 | [src/packages/intelligence/local\_llm/\_\_init\_\_.py](src/packages/intelligence/local_llm/__init__.py) | Ollama HTTP client — generate, chat, pull, is_available |
 | [src/packages/intelligence/cloud\_llm/\_\_init\_\_.py](src/packages/intelligence/cloud_llm/__init__.py) | Claude API client — generate, chat, is_available |
 | [src/packages/intelligence/prompts.py](src/packages/intelligence/prompts.py) | Prompt template manager — bundled defaults + user-editable |
@@ -64,6 +64,18 @@
 | File | What it covers |
 |------|---------------|
 | [src/packages/memory/manager.py](src/packages/memory/manager.py) | approve, reject, forget, why, list, search, sources — all memory ops |
+
+### Experience
+
+| File | What it covers |
+|------|---------------|
+| [src/packages/experience/mode\_presets.py](src/packages/experience/mode_presets.py) | Learner, Companion, and Researcher mode presets |
+| [src/packages/experience/project\_resolver.py](src/packages/experience/project_resolver.py) | Active project detection for `stareha learn` |
+| [src/packages/experience/project\_registry.py](src/packages/experience/project_registry.py) | Known project registry backed by metadata |
+| [src/packages/experience/learning\_card.py](src/packages/experience/learning_card.py) | Session-end Learning Card builder |
+| [src/packages/experience/review\_flow.py](src/packages/experience/review_flow.py) | Beginner Save / Ignore / Edit review flow |
+| [src/packages/experience/continuation.py](src/packages/experience/continuation.py) | `stareha continue` plan builder |
+| [src/packages/experience/home.py](src/packages/experience/home.py) | No-argument `stareha` home screen |
 
 ### Guidance
 
@@ -131,7 +143,7 @@
 | [_flows/workflow-memory-flow.md](_flows/workflow-memory-flow.md) | How raw events become durable workflow memories |
 | [_flows/learning-ledger-flow.md](_flows/learning-ledger-flow.md) | The full ledger pipeline: event → provenance → memory |
 | [_flows/prepared-guidance-flow.md](_flows/prepared-guidance-flow.md) | How Stareha prepares next-session guidance |
-| [_flows/intelligence-policy-flow.md](_flows/intelligence-policy-flow.md) | Scripts → Local LLM → Cloud LLM decision logic |
+| [_flows/intelligence-policy-flow.md](_flows/intelligence-policy-flow.md) | Scripts → Local LLM → explicit cloud decision logic |
 | [_flows/memory-governance-flow.md](_flows/memory-governance-flow.md) | Memory inbox → approve/reject/edit → feedback loop |
 | [_flows/permission-flow.md](_flows/permission-flow.md) | How permissions are requested, granted, and revoked |
 

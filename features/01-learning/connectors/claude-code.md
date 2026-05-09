@@ -2,7 +2,7 @@
 
 **Status:** Built  
 **Stage:** 1  
-**Permission required:** `claude_code` (enabled via `stareha init` or `stareha permissions add claude_code`)
+**Permission required:** `claude_code` (advanced opt-in via `stareha init` or `stareha permissions add claude_code`; not enabled by beginner setup)
 
 ---
 

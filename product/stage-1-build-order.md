@@ -5,6 +5,8 @@
 **Language:** Python 3.11+ with `uv`  
 **Done when:** `stareha status` shows daemon running + event count growing as you type commands.
 
+**Current note:** Stage 1 is complete. `stareha init` remains as the advanced setup command described here, while the current beginner product setup is `stareha setup` from Stage 5.5.
+
 ---
 
 ## Pre-work (do first, ~15 min)

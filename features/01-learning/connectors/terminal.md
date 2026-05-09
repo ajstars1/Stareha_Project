@@ -38,7 +38,7 @@ History is read periodically or on session end.
 A shell hook (`PROMPT_COMMAND` or zsh `precmd`) sends each command + exit code to Stareha in real time.
 
 ```bash
-# Added to ~/.zshrc by stareha init
+# Added to ~/.zshrc by stareha setup or advanced stareha init
 stareha_hook() {
   stareha event command \
     --cmd "$1" \
