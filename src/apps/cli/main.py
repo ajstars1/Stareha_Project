@@ -107,6 +107,16 @@ def _stop_daemon_direct() -> bool:
         return False
 
 
+def _load_raw_config() -> dict:
+    """Return the raw config JSON dict (not the typed Config dataclass)."""
+    from packages.core.config import CONFIG_PATH
+    import json as _json
+    if CONFIG_PATH.exists():
+        with open(CONFIG_PATH) as f:
+            return _json.load(f)
+    return {}
+
+
 def _uptime(pid: int) -> str:
     try:
         stat = Path(f"/proc/{pid}/stat").read_text().split()
@@ -199,6 +209,69 @@ def setup(ctx):
         "workspace_roots": [workspace_path],
         "watched_paths": watched_paths,
     })
+
+    # ── LLM provider step ────────────────────────────────────────────────────
+    console.print("\n[bold]How should Stareha generate insights?[/bold]\n")
+    console.print("1. Claude Code  — Use your claude.ai Pro/Max subscription (recommended, no API key needed)")
+    console.print("2. Anthropic    — Anthropic API key (console.anthropic.com)")
+    console.print("3. OpenAI       — OpenAI API key (platform.openai.com)")
+    console.print("4. Groq         — Groq API key — free tier available (console.groq.com)")
+    console.print("5. Gemini       — Google Gemini API key (aistudio.google.com)")
+    console.print("6. Custom       — Any OpenAI-compatible endpoint (Ollama cloud, vLLM, LM Studio, etc.)")
+    console.print("7. Local only   — Use Ollama on this machine (no cloud)")
+    console.print("8. Skip for now — Configure later with: stareha cloud-llm list\n")
+
+    llm_choice = click.prompt(
+        "Choose LLM provider",
+        type=click.Choice(["1", "2", "3", "4", "5", "6", "7", "8"], case_sensitive=False),
+        default="8",
+        show_default=True,
+    )
+
+    if llm_choice == "1":
+        try:
+            from packages.intelligence.providers.claude_code_oauth import run_oauth_flow
+            console.print("\n[dim]Opening browser for Claude Code OAuth...[/dim]")
+            success = run_oauth_flow()
+            if success:
+                save_config({"cloud_provider": "claude_code_oauth"})
+                console.print("[green]✓[/green] Claude Code connected and set as active provider.")
+            else:
+                console.print("[yellow]OAuth did not complete. Configure later with: stareha cloud-llm connect[/yellow]")
+        except ImportError:
+            console.print("[yellow]Claude Code OAuth not available in this build. Run: stareha cloud-llm connect[/yellow]")
+    elif llm_choice in ("2", "3", "4", "5"):
+        provider_map = {"2": "anthropic", "3": "openai", "4": "groq", "5": "gemini"}
+        provider_id = provider_map[llm_choice]
+        api_key = click.prompt(f"Enter your {provider_id.capitalize()} API key", hide_input=True)
+        if api_key.strip():
+            _raw_cfg = _load_raw_config()
+            provider_cfgs = _raw_cfg.get("provider_configs", {})
+            provider_cfgs[provider_id] = {"api_key": api_key.strip()}
+            save_config({"provider_configs": provider_cfgs, "cloud_provider": provider_id})
+            console.print(f"[green]✓[/green] {provider_id.capitalize()} API key saved and set as active provider.")
+        else:
+            console.print("[yellow]No key entered — skipped.[/yellow]")
+    elif llm_choice == "6":
+        base_url = click.prompt("Base URL (e.g. http://localhost:11434/v1)", default="http://localhost:11434/v1")
+        api_key = click.prompt("API key (leave blank if not required)", default="", hide_input=True)
+        model = click.prompt("Model name (e.g. llama3.2:3b)", default="llama3.2:3b")
+        _raw_cfg = _load_raw_config()
+        provider_cfgs = _raw_cfg.get("provider_configs", {})
+        provider_cfgs["openai_compat"] = {
+            "base_url": base_url.strip(),
+            "api_key": api_key.strip(),
+            "model": model.strip(),
+        }
+        save_config({"provider_configs": provider_cfgs, "cloud_provider": "openai_compat"})
+        console.print("[green]✓[/green] Custom endpoint saved and set as active provider.")
+    elif llm_choice == "7":
+        console.print("[dim]Local Ollama selected. No cloud provider set.[/dim]")
+        console.print("[dim]Make sure Ollama is running: ollama serve[/dim]")
+    else:
+        console.print("[dim]Skipped. Configure later with: stareha cloud-llm list[/dim]")
+
+    # ─────────────────────────────────────────────────────────────────────────
 
     try:
         _install_systemd_service()
@@ -1382,6 +1455,226 @@ def permissions_add(source, path):
     if path:
         msg += f" → {path}"
     console.print(msg)
+
+
+# ── stareha cloud-llm ────────────────────────────────────────────────────────
+
+PROVIDER_IDS: dict[str, str] = {
+    "claude_code_oauth": "Claude Code (claude.ai subscription)",
+    "anthropic":         "Anthropic API key",
+    "openai":            "OpenAI",
+    "groq":              "Groq",
+    "gemini":            "Google Gemini",
+    "openai_compat":     "Custom OpenAI-compatible endpoint",
+}
+
+
+def _provider_is_configured(provider_id: str, provider_configs: dict) -> bool:
+    cfg = provider_configs.get(provider_id, {})
+    if provider_id == "claude_code_oauth":
+        return bool(cfg.get("access_token"))
+    if provider_id == "openai_compat":
+        return bool(cfg.get("base_url"))
+    return bool(cfg.get("api_key"))
+
+
+@cli.group("cloud-llm")
+def cloud_llm_group():
+    """Manage cloud LLM providers (Anthropic, OpenAI, Groq, Gemini, and more)."""
+    pass
+
+
+@cloud_llm_group.command("list")
+def cloud_llm_list():
+    """Show all 6 providers with configuration status."""
+    raw = _load_raw_config()
+    active = raw.get("cloud_provider", "")
+    provider_configs = raw.get("provider_configs", {})
+
+    table = Table(title="Cloud LLM Providers", box=None, show_lines=False, padding=(0, 2))
+    table.add_column("Provider", style="bold")
+    table.add_column("Display Name")
+    table.add_column("Status")
+    table.add_column("Active")
+
+    for pid, display in PROVIDER_IDS.items():
+        configured = _provider_is_configured(pid, provider_configs)
+        status_str = "[green]configured ✓[/green]" if configured else "[dim]not configured —[/dim]"
+        active_str = "[yellow]★[/yellow]" if pid == active else ""
+        table.add_row(pid, display, status_str, active_str)
+
+    console.print()
+    console.print(table)
+    console.print()
+    if not active:
+        console.print("[dim]No active provider. Run: stareha cloud-llm use <provider>[/dim]")
+    else:
+        console.print(f"[dim]Active: {active}. Switch with: stareha cloud-llm use <provider>[/dim]")
+    console.print()
+
+
+@cloud_llm_group.command("status")
+def cloud_llm_status():
+    """Show the active provider, model, and credential status."""
+    raw = _load_raw_config()
+    active = raw.get("cloud_provider", "")
+    provider_configs = raw.get("provider_configs", {})
+
+    console.print()
+    if not active:
+        console.print("[yellow]No active cloud LLM provider.[/yellow]")
+        console.print("[dim]Run `stareha cloud-llm list` to see all providers.[/dim]")
+        console.print()
+        return
+
+    display = PROVIDER_IDS.get(active, active)
+    configured = _provider_is_configured(active, provider_configs)
+    cred_str = "[green]credentials present[/green]" if configured else "[red]not configured[/red]"
+    cfg = provider_configs.get(active, {})
+    model = cfg.get("model", "[dim]default[/dim]")
+
+    console.print(f"[bold]Active provider:[/bold]  {active}  ({display})")
+    console.print(f"[bold]Model:[/bold]            {model}")
+    console.print(f"[bold]Credentials:[/bold]      {cred_str}")
+
+    if active == "openai_compat" and cfg.get("base_url"):
+        console.print(f"[bold]Base URL:[/bold]         {cfg['base_url']}")
+
+    console.print()
+    console.print("[dim]Run `stareha cloud-llm list` to see all providers.[/dim]")
+    console.print()
+
+
+@cloud_llm_group.command("use")
+@click.argument("provider")
+def cloud_llm_use(provider):
+    """Set the active cloud LLM provider."""
+    if provider not in PROVIDER_IDS:
+        valid = ", ".join(PROVIDER_IDS.keys())
+        console.print(f"[red]Unknown provider:[/red] {provider}")
+        console.print(f"[dim]Valid providers: {valid}[/dim]")
+        raise SystemExit(1)
+
+    raw = _load_raw_config()
+    provider_configs = raw.get("provider_configs", {})
+    save_config({"cloud_provider": provider})
+    console.print(f"[green]✓[/green] Active provider set to: {provider}  ({PROVIDER_IDS[provider]})")
+
+    if not _provider_is_configured(provider, provider_configs):
+        if provider == "claude_code_oauth":
+            console.print("[dim]Run `stareha cloud-llm connect` to authenticate with Claude Code.[/dim]")
+        else:
+            console.print(f"[dim]Run `stareha cloud-llm set-key {provider}` to add credentials.[/dim]")
+
+
+@cloud_llm_group.command("set-key")
+@click.argument("provider")
+@click.argument("key", required=False)
+def cloud_llm_set_key(provider, key):
+    """Set the API key for a provider. Use `connect` for Claude Code OAuth."""
+    if provider not in PROVIDER_IDS:
+        valid = ", ".join(PROVIDER_IDS.keys())
+        console.print(f"[red]Unknown provider:[/red] {provider}")
+        console.print(f"[dim]Valid providers: {valid}[/dim]")
+        raise SystemExit(1)
+
+    if provider == "claude_code_oauth":
+        console.print("[yellow]Claude Code uses OAuth, not an API key.[/yellow]")
+        console.print("[dim]Run `stareha cloud-llm connect` to authenticate.[/dim]")
+        return
+
+    raw = _load_raw_config()
+    provider_configs = raw.get("provider_configs", {})
+
+    if provider == "openai_compat":
+        base_url = click.prompt("Base URL (e.g. http://localhost:11434/v1)", default="http://localhost:11434/v1")
+        api_key_val = key or click.prompt("API key (leave blank if not required)", default="", hide_input=True)
+        model = click.prompt("Model name (e.g. llama3.2:3b)", default="llama3.2:3b")
+        existing = provider_configs.get("openai_compat", {})
+        existing.update({
+            "base_url": base_url.strip(),
+            "api_key": api_key_val.strip(),
+            "model": model.strip(),
+        })
+        provider_configs["openai_compat"] = existing
+    else:
+        api_key_val = key or click.prompt(f"Enter {PROVIDER_IDS[provider]} API key", hide_input=True)
+        if not api_key_val.strip():
+            console.print("[yellow]No key entered — cancelled.[/yellow]")
+            return
+        existing = provider_configs.get(provider, {})
+        existing["api_key"] = api_key_val.strip()
+        provider_configs[provider] = existing
+
+    save_config({"provider_configs": provider_configs})
+    console.print(f"[green]✓[/green] Credentials saved for: {provider}  ({PROVIDER_IDS[provider]})")
+
+    current_active = raw.get("cloud_provider", "")
+    if current_active != provider:
+        if click.confirm(f"Set {provider} as the active provider?", default=True):
+            save_config({"cloud_provider": provider})
+            console.print(f"[green]✓[/green] Active provider set to: {provider}")
+
+
+@cloud_llm_group.command("connect")
+def cloud_llm_connect():
+    """Authenticate with Claude Code using OAuth (claude.ai subscription)."""
+    try:
+        from packages.intelligence.providers.claude_code_oauth import run_oauth_flow
+    except ImportError:
+        console.print("[red]Claude Code OAuth provider not available in this build.[/red]")
+        console.print("[dim]This feature requires the claude_code_oauth provider package.[/dim]")
+        return
+
+    console.print("\n[bold]Claude Code OAuth[/bold]")
+    console.print("[dim]This will open a browser window to authenticate with claude.ai.[/dim]\n")
+
+    success = run_oauth_flow()
+
+    if success:
+        console.print("\n[green]✓[/green] Claude Code connected successfully.")
+        raw = _load_raw_config()
+        current_active = raw.get("cloud_provider", "")
+        if current_active != "claude_code_oauth":
+            if click.confirm("Set Claude Code as the active provider?", default=True):
+                save_config({"cloud_provider": "claude_code_oauth"})
+                console.print("[green]✓[/green] Active provider set to: claude_code_oauth")
+    else:
+        console.print("\n[red]OAuth flow did not complete.[/red]")
+        console.print("[dim]Try again or check your claude.ai subscription.[/dim]")
+
+
+@cloud_llm_group.command("clear")
+@click.argument("provider")
+def cloud_llm_clear(provider):
+    """Clear stored credentials for a provider."""
+    if provider not in PROVIDER_IDS:
+        valid = ", ".join(PROVIDER_IDS.keys())
+        console.print(f"[red]Unknown provider:[/red] {provider}")
+        console.print(f"[dim]Valid providers: {valid}[/dim]")
+        raise SystemExit(1)
+
+    raw = _load_raw_config()
+    provider_configs = raw.get("provider_configs", {})
+
+    if not provider_configs.get(provider):
+        console.print(f"[dim]No credentials stored for: {provider}[/dim]")
+        return
+
+    console.print(f"[bold]Provider:[/bold] {provider}  ({PROVIDER_IDS[provider]})")
+    if not click.confirm("Clear stored credentials?", default=False):
+        console.print("[dim]Cancelled.[/dim]")
+        return
+
+    provider_configs.pop(provider, None)
+    save_config({"provider_configs": provider_configs})
+    console.print(f"[green]✓[/green] Credentials cleared for: {provider}")
+
+    current_active = raw.get("cloud_provider", "")
+    if current_active == provider:
+        save_config({"cloud_provider": ""})
+        console.print("[yellow]Active provider unset (was this provider).[/yellow]")
+        console.print("[dim]Run `stareha cloud-llm use <provider>` to set a new active provider.[/dim]")
 
 
 # ── Entry point ───────────────────────────────────────────────────────────────
