@@ -63,7 +63,7 @@ Stareha is a **local-first, privacy-preserving learning companion** for develope
 - **Transparent** — every memory has full provenance. `stareha memory why <id>` shows exactly which events caused a memory.
 - **Opt-in** — no source is watched without explicit permission. You control what Stareha sees.
 - **Works without AI** — deterministic scripts and local SQLite power the base loop.
-- **Optional intelligence layers** — local LLM (Ollama) can improve wording and quizzes; cloud LLM (Claude) is only used by explicit cloud-enabled commands.
+- **Optional intelligence layers** — local LLM (Ollama) can improve wording and quizzes; cloud LLM (Claude, Gemini, OpenAI, Groq) is only used by explicit cloud-enabled commands.
 
 ---
 
@@ -115,6 +115,7 @@ The beginner setup asks:
 - Which mode to use first. `Learner` is the stable alpha path.
 - Where your learning projects live, such as `~/projects`.
 - Whether to enable recommended local tracking: terminal commands, project file activity metadata, and manual notes.
+- Which LLM to use — launches `stareha llm setup` (guided wizard: Cloud or Local, pick provider, set credentials).
 - Whether to start a first learning session now.
 
 Setup installs the shell hook into `~/.zshrc` or `~/.bashrc`, stores the workspace root in `~/.stareha/config.json`, and starts the daemon when needed. **Restart your shell** once after setup so the hook activates.
@@ -244,7 +245,7 @@ stareha brief                    # show latest prepared briefing
 stareha note "struggling with async/await"   # manual note (highest-signal input)
 
 stareha quiz "CSS flexbox"       # run a quiz on any topic
-stareha quiz --cloud "CSS flexbox" # explicitly allow Claude fallback
+stareha quiz --cloud "CSS flexbox" # explicitly allow cloud provider fallback
 stareha quiz                     # run the latest prepared quiz
 ```
 
@@ -290,9 +291,9 @@ stareha permissions add files /path/to/project
 Stareha has three intelligence layers. The decision rule:
 
 ```
-Can a script do it?      → Use script.   (free, instant, zero privacy risk)
-Can local LLM do it?     → Use Ollama.   (private, runs on your machine)
-Did the user explicitly allow cloud? → Use Claude.   (summary-only context)
+Can a script do it?      → Use script.     (free, instant, zero privacy risk)
+Can local LLM do it?     → Use Ollama.     (private, runs on your machine)
+Did the user explicitly allow cloud? → Use cloud LLM.   (summary-only context)
 ```
 
 **What each layer sees:**
@@ -332,8 +333,9 @@ ollama pull llama3.2:3b
 ollama serve
 
 # Verify Stareha sees it
-stareha status
-# → Local LLM  ✓ ollama:11434 — llama3.2:3b
+stareha llm status
+# → Local
+# →   ✓ Ollama   llama3.2:3b   (http://localhost:11434)
 ```
 
 With Ollama running:
@@ -402,7 +404,7 @@ Stareha_Project/
 │       ├── intelligence/
 │       │   ├── scripts/          # Deterministic pattern extractor
 │       │   ├── local_llm/        # Ollama HTTP client
-│       │   ├── cloud_llm/        # Claude API client
+│       │   ├── cloud_llm/        # Multi-provider cloud LLM client (Claude OAuth/API, Gemini, OpenAI, Groq)
 │       │   ├── router.py         # Intelligence policy router
 │       │   ├── prompts.py        # Prompt template manager
 │       │   ├── learning_runner.py # Orchestrates extraction + writes candidates
