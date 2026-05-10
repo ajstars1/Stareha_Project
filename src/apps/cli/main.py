@@ -126,7 +126,18 @@ def _uptime(pid: int) -> str:
 @click.group(invoke_without_command=True)
 @click.pass_context
 def cli(ctx):
-    """Stareha — your AI companion that learns how you work."""
+    """Stareha Learn — never restart your learning from zero.
+
+    \b
+    Core loop:
+      stareha learn "React hooks"   — start a session
+      stareha note "confused here"  — capture a thought
+      stareha done                  — see what you learned
+      stareha continue              — pick up next time
+
+    Run any command with --help for details.
+    Advanced controls: memory, permissions, local-llm, cloud-llm, status.
+    """
     if ctx.invoked_subcommand is not None:
         return
     store = _get_store()
@@ -141,7 +152,7 @@ def cli(ctx):
 @cli.command()
 @click.pass_context
 def setup(ctx):
-    """Beginner setup for Stareha Learn."""
+    """First-time setup wizard."""
     console.print("\n[bold]Welcome to Stareha Learn.[/bold]")
     console.print("[dim]Setup takes about two minutes and keeps raw data local.[/dim]\n")
 
@@ -205,6 +216,60 @@ def setup(ctx):
     except Exception:
         console.print("[dim]systemd user service not available; direct daemon start will be used.[/dim]")
 
+    # ── LLM setup ──────────────────────────────────────────────────────────────
+    console.print("\n[bold]How should Stareha generate insights?[/bold]")
+    console.print("[dim]Stareha needs an LLM to summarize what you learn and answer questions.[/dim]\n")
+    console.print("1. Cloud LLM (Recommended for best results)")
+    console.print("   Uses Claude via Anthropic API. Requires an API key.")
+    console.print("   Get one free at: console.anthropic.com")
+    console.print("2. Local LLM (Private, runs on your machine)")
+    console.print("   Uses Ollama. Requires Ollama installed and ~2GB disk.")
+    console.print("3. Skip for now")
+    console.print("   You can configure this later with: stareha local-llm status\n")
+    llm_choice = click.prompt(
+        "Choose LLM setup",
+        type=click.Choice(["1", "2", "3"], case_sensitive=False),
+        default="1",
+        show_default=True,
+    )
+
+    if llm_choice == "1":
+        from packages.intelligence.cloud_llm import is_available as _cloud_ok, _api_key
+        existing = _api_key()
+        if existing:
+            console.print("[green]✓ Cloud LLM already configured.[/green]")
+        else:
+            api_key = click.prompt(
+                "Anthropic API key",
+                hide_input=True,
+                default="",
+                show_default=False,
+                prompt_suffix=" (paste here, input hidden): ",
+            )
+            if api_key.strip():
+                save_config({"cloud_llm_api_key": api_key.strip()})
+                console.print("[green]✓ API key saved to ~/.stareha/config.json[/green]")
+                console.print("[dim]  (also works if you set ANTHROPIC_API_KEY in your shell)[/dim]")
+            else:
+                console.print("[yellow]  Skipped — set ANTHROPIC_API_KEY in your shell or re-run setup.[/yellow]")
+
+    elif llm_choice == "2":
+        from packages.intelligence import local_llm as _llm
+        config_now = load_config()
+        if _llm.is_available(config_now.local_llm_base_url):
+            console.print(f"[green]✓ Ollama is running.[/green] Default model: {config_now.local_llm_model}")
+            if click.confirm(f"Pull {config_now.local_llm_model} now?", default=True):
+                ok = _llm.pull(config_now.local_llm_model, base_url=config_now.local_llm_base_url)
+                if ok:
+                    console.print(f"[green]✓ {config_now.local_llm_model} ready.[/green]")
+                else:
+                    console.print(f"[yellow]Pull failed — run manually: ollama pull {config_now.local_llm_model}[/yellow]")
+        else:
+            console.print("[yellow]Ollama not found at http://localhost:11434[/yellow]")
+            console.print("  Install Ollama: https://ollama.com/download")
+            console.print(f"  Then run: [bold]ollama pull {config_now.local_llm_model}[/bold]")
+            console.print("  And: [bold]stareha local-llm status[/bold] to verify")
+
     console.print("\n[bold green]Setup complete.[/bold green]")
     console.print("[dim]Restart your shell once so the terminal hook is active.[/dim]")
 
@@ -220,9 +285,9 @@ def setup(ctx):
 
 # ── stareha init ──────────────────────────────────────────────────────────────
 
-@cli.command()
+@cli.command(hidden=True)
 def init():
-    """First-time setup: enable sources, install shell hook, enable daemon."""
+    """Advanced setup wizard (use `stareha setup` instead)."""
     console.print("\n[bold]Welcome to Stareha.[/bold]\n")
     console.print("Stareha learns from approved sources. Nothing is enabled by default.\n")
 
@@ -311,9 +376,9 @@ def _install_systemd_service() -> None:
 
 # ── stareha start/stop/restart ────────────────────────────────────────────────
 
-@cli.command()
+@cli.command(hidden=True)
 def start():
-    """Start the Stareha daemon (systemd if available, direct process otherwise)."""
+    """Start the Stareha background process."""
     if _daemon_pid():
         console.print("[yellow]Daemon is already running.[/yellow]")
         return
@@ -333,18 +398,18 @@ def start():
         console.print("[dim]Run `stareha init` to set up systemd, or check Python path.[/dim]")
 
 
-@cli.command()
+@cli.command(hidden=True)
 def stop():
-    """Stop the Stareha daemon."""
+    """Stop the Stareha background process."""
     if _service_file_installed():
         _systemctl("stop", "stareha")
     _stop_daemon_direct()
     console.print("[yellow]●[/yellow] Stareha stopped.")
 
 
-@cli.command()
+@cli.command(hidden=True)
 def restart():
-    """Restart the Stareha daemon."""
+    """Restart the Stareha background process."""
     ctx = click.get_current_context()
     ctx.invoke(stop)
     time.sleep(0.5)
@@ -364,7 +429,7 @@ def daemon():
 
 @cli.command()
 def status():
-    """Show daemon status, sources, and event counts."""
+    """Show Stareha's status, active session, and sources."""
     pid = _daemon_pid()
     config = load_config()
 
@@ -437,7 +502,7 @@ def status():
 
 # ── stareha session ───────────────────────────────────────────────────────────
 
-@cli.group()
+@cli.group(hidden=True)
 def session():
     """Manage learning/work sessions."""
     pass
@@ -504,7 +569,7 @@ def session_stop():
 @cli.command()
 @click.option("--review/--no-review", default=True, help="Review what Stareha noticed.")
 def done(review):
-    """Finish the current learning session and show a Learning Card."""
+    """Finish your session and see what you learned."""
     store = _get_store()
     active = store.get_active_session()
     if not active:
@@ -540,7 +605,7 @@ def done(review):
 
 @cli.command("continue")
 def continue_cmd():
-    """Resume from the last useful learning point."""
+    """Pick up from your last learning point."""
     store = _get_store()
     plan = build_continue_plan(store)
     store.close()
@@ -576,7 +641,7 @@ def session_status():
                 type=click.Choice(["today", "yesterday", "session", "week"],
                                   case_sensitive=False))
 def what_did_you_learn_cmd(period):
-    """Show what Stareha observed and learned in a time period."""
+    """See what Stareha noticed from your recent sessions."""
     store = _get_store()
     data = what_did_you_learn(store, period)
     store.close()
@@ -649,10 +714,10 @@ def what_did_you_learn_cmd(period):
 
 # ── stareha ledger ─────────────────────────────────────────────────────────────
 
-@cli.command()
+@cli.command(hidden=True)
 @click.option("--limit", "-n", default=10, help="Max runs to show (default 10).")
 def ledger(limit):
-    """Show the full learning audit log — runs, feedback stats, blocked patterns."""
+    """Learning run audit log — runs, stats, patterns."""
     store = _get_store()
     runs = recent_runs(store, limit=limit)
     fb = feedback_stats(store)
@@ -725,7 +790,7 @@ def _fmt_ts(ts: int) -> str:
 @click.option("--project", "project", default=None, help="Project path for this session.")
 @click.option("--force", is_flag=True, help="Run extraction even if few events since last run.")
 def learn(goal, project, force):
-    """Start a learning session, or run extraction when no goal is provided."""
+    """Start a learning session."""
     if isinstance(goal, (tuple, list)):
         goal_text = " ".join(goal).strip()
     else:
@@ -782,7 +847,7 @@ def learn(goal, project, force):
 
 # ── stareha memory ────────────────────────────────────────────────────────────
 
-@cli.group()
+@cli.group(hidden=True)
 def memory():
     """Manage Stareha's memory."""
     pass
@@ -1079,10 +1144,10 @@ def memory_stats_cmd():
 
 # ── stareha prep / brief / quiz / note ───────────────────────────────────────
 
-@cli.command()
+@cli.command(hidden=True)
 @click.option("--quiz", is_flag=True, help="Also generate a quiz for the top weak concept.")
 def prep(quiz):
-    """Prepare guidance for the next session — briefing + optional quiz."""
+    """Prepare next-session briefing and quiz."""
     store = _get_store()
     with console.status("[dim]Analysing and preparing guidance...[/dim]"):
         ids = prepare_guidance(store, with_quiz=quiz)
@@ -1107,7 +1172,7 @@ def prep(quiz):
 
 @cli.command()
 def brief():
-    """Show the latest prepared briefing."""
+    """See your next-session briefing."""
     store = _get_store()
     pending = get_pending(store, gtype="briefing")
     if not pending:
@@ -1134,7 +1199,7 @@ def brief():
 @click.option("--cloud", is_flag=True, help="Allow Claude fallback if local LLM is unavailable.")
 @click.argument("topic", required=False)
 def quiz(topic, cloud):
-    """Run an interactive quiz — on a topic or from the latest prepared quiz."""
+    """Run a quiz on a topic or from your learning history."""
     store = _get_store()
 
     if topic:
@@ -1171,7 +1236,7 @@ def quiz(topic, cloud):
 @cli.command()
 @click.argument("text", nargs=-1)
 def note(text):
-    """Add a manual note — e.g. `stareha note \"struggling with async/await\"`."""
+    """Add a note to your current session."""
     if isinstance(text, (tuple, list)):
         note_text = " ".join(text).strip()
     else:
@@ -1199,7 +1264,7 @@ def note(text):
 
 # ── stareha local-llm ────────────────────────────────────────────────────────
 
-@cli.group("local-llm")
+@cli.group("local-llm", hidden=True)
 def local_llm_group():
     """Manage the local LLM (Ollama) integration."""
     pass
@@ -1234,7 +1299,7 @@ def local_llm_status():
         console.print(f"[green]✓ Available[/green]  {cloud['configured_model']}")
     else:
         console.print("[dim]✗ Not configured[/dim]")
-        console.print("  Set ANTHROPIC_API_KEY to enable cloud LLM fallback")
+        console.print("  Run: [bold]stareha cloud-llm set-key[/bold]  or  export ANTHROPIC_API_KEY=sk-ant-...")
 
     console.rule("[dim]Prompt templates[/dim]", style="dim")
     for p in list_prompts():
@@ -1276,16 +1341,59 @@ def local_llm_prompts():
     console.print("\nEdit any file to customise how Stareha generates summaries and quizzes.")
 
 
+# ── stareha cloud-llm ────────────────────────────────────────────────────────
+
+@cli.group("cloud-llm", hidden=True)
+def cloud_llm_group():
+    """Connect an AI provider — Claude, OpenAI, Groq, Gemini, or any endpoint."""
+
+
+@cloud_llm_group.command("status")
+def cloud_llm_status():
+    """Show active provider, model, and credential status."""
+    from packages.intelligence.cloud_llm import is_available, _api_key
+    key = _api_key()
+    if key:
+        masked = key[:8] + "..." + key[-4:] if len(key) > 12 else "***"
+        console.print(f"[green]✓ Cloud LLM available[/green]  (key: {masked})")
+        console.print(f"  Model: {load_config().cloud_llm_model}")
+        console.print("  Source: ANTHROPIC_API_KEY env" if os.environ.get("ANTHROPIC_API_KEY") else "  Source: ~/.stareha/config.json")
+    else:
+        console.print("[yellow]✗ Cloud LLM not configured[/yellow]")
+        console.print("  Run: [bold]stareha cloud-llm set-key[/bold]")
+        console.print("  Or:  export ANTHROPIC_API_KEY=sk-ant-...")
+        console.print("  Get a key at: console.anthropic.com")
+
+
+@cloud_llm_group.command("set-key")
+@click.argument("api_key", required=False)
+def cloud_llm_set_key(api_key):
+    """Save an API key for a provider."""
+    if not api_key:
+        api_key = click.prompt("Anthropic API key", hide_input=True, prompt_suffix=" (input hidden): ")
+    if not api_key.strip():
+        console.print("[red]No key provided.[/red]")
+        return
+    save_config({"cloud_llm_api_key": api_key.strip()})
+    console.print("[green]✓ API key saved.[/green]  Test with: stareha cloud-llm status")
+
+
+@cloud_llm_group.command("clear-key")
+def cloud_llm_clear_key():
+    """Remove stored credentials for a provider."""
+    save_config({"cloud_llm_api_key": ""})
+    console.print("[green]✓ API key cleared from config.[/green]")
+
+
 # ── stareha talk ──────────────────────────────────────────────────────────────
 
 @cli.command()
-@click.option("--cloud", is_flag=True, help="Allow cloud LLM (Claude) — uses ANTHROPIC_API_KEY.")
+@click.option("--cloud", is_flag=True, help="Allow cloud LLM (Claude). Needs key via `stareha cloud-llm set-key` or ANTHROPIC_API_KEY.")
 def talk(cloud):
-    """
-    Conversational mode — ask Stareha about your work and learning.
+    """Ask Stareha about your work and learning.
 
-    Context: approved memories only (no raw events sent to any LLM).
-    Local LLM is used by default; --cloud enables Claude.
+    Uses local LLM by default. Pass --cloud to use your configured cloud provider.
+    Only approved memories are sent — no raw events.
     """
     from packages.intelligence import router
     from packages.memory.manager import list_memories as _list_mems
@@ -1359,7 +1467,7 @@ If you don't know something, say so. Never invent details."""
 
 # ── stareha permissions ───────────────────────────────────────────────────────
 
-@cli.group()
+@cli.group(hidden=True)
 def permissions():
     """Manage data source permissions."""
     pass
