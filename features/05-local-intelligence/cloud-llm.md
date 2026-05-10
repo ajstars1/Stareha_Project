@@ -1,13 +1,49 @@
 # Cloud LLM
 
-**Status:** Built as restricted optional layer
+**Status:** Built — multi-provider, restricted optional layer
 **Stage:** 5
 
 ---
 
 ## What It Is
 
-Cloud LLM (Claude via Anthropic API) is the most capable intelligence layer. It is not enabled by beginner setup and is used only when a command explicitly allows cloud fallback or a future consent flag enables it for a specific feature.
+Cloud LLM is the most capable intelligence layer. It supports six providers and is not enabled by beginner setup. It is used only when a command explicitly allows cloud fallback or the user has configured a provider through `stareha setup` or `stareha cloud-llm`.
+
+---
+
+## Supported Providers
+
+| Provider ID | Display name | Auth |
+|-------------|-------------|------|
+| `claude_code_oauth` | Claude Code (claude.ai subscription) | PKCE OAuth — no API key needed |
+| `anthropic` | Anthropic API key | `ANTHROPIC_API_KEY` or config |
+| `openai` | OpenAI | `OPENAI_API_KEY` or config |
+| `groq` | Groq | `GROQ_API_KEY` or config |
+| `gemini` | Google Gemini | `GEMINI_API_KEY` or config |
+| `openai_compat` | Custom OpenAI-compatible endpoint | API key + base URL |
+
+The active provider is stored as `cloud_provider` in `~/.stareha/config.json`. Per-provider credentials live under `provider_configs.<id>`.
+
+### Claude Code OAuth (recommended)
+Uses your existing claude.ai Pro or Max subscription — no separate API key.
+```bash
+stareha cloud-llm connect       # opens browser → paste code → tokens saved
+```
+Token storage: `~/.stareha/claude_code_oauth.json` + `provider_configs.claude_code_oauth` in config.
+Tokens auto-refresh 120 seconds before expiry.
+
+### API key providers
+```bash
+stareha cloud-llm set-key anthropic   # or openai / groq / gemini
+stareha cloud-llm set-key openai_compat  # also prompts for base_url + model
+```
+
+### Switching providers
+```bash
+stareha cloud-llm list          # table of all providers with status
+stareha cloud-llm use groq      # set active provider
+stareha cloud-llm status        # show active provider + model
+```
 
 ---
 
@@ -72,11 +108,18 @@ Private conversations from Claude Code.
 
 ---
 
-## Model Used
+## Default Models per Provider
 
-Default: `claude-sonnet-4-6` (as per ai-rag.md rules)
+| Provider | Default model |
+|----------|--------------|
+| `claude_code_oauth` | `claude-sonnet-4-6` |
+| `anthropic` | `claude-haiku-4-5-20251001` |
+| `openai` | `gpt-4o-mini` |
+| `groq` | `llama3-8b-8192` |
+| `gemini` | `gemini-1.5-flash` |
+| `openai_compat` | (user-specified) |
 
-For simple tasks that go to cloud: `claude-haiku-4-5`
+Override per-provider with `save_config({"provider_configs": {"groq": {"model": "llama3-70b-8192"}}})`.
 
 ---
 
@@ -87,7 +130,7 @@ stareha talk --cloud
 ```
 
 Opens an interactive conversation with Stareha. In this mode:
-- Local LLM is tried first; Claude is used as fallback when `--cloud` is passed and `ANTHROPIC_API_KEY` is set
+- Local LLM is tried first; active cloud provider is used as fallback when `--cloud` is passed and that provider has credentials
 - Context sent = session summaries + relevant memories (not raw data)
 - User is informed that cloud LLM is being used
 - Conversation history stored locally only

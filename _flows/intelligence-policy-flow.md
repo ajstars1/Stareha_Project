@@ -95,6 +95,8 @@ Use only when:
 - User explicitly requests cloud fallback for a task, such as `stareha quiz --cloud <topic>`
 - Future setup/config has recorded explicit cloud consent for a specific feature
 
+**Active provider** is selected from six options: `claude_code_oauth` (claude.ai subscription via PKCE OAuth), `anthropic` (API key), `openai`, `groq`, `gemini`, or `openai_compat` (any OpenAI-compatible endpoint). Set via `stareha cloud-llm use <provider>` or during `stareha setup`.
+
 Cloud LLM receives:
 - Summaries only — never raw data
 - Stripped of private details

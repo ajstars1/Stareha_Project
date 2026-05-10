@@ -55,7 +55,12 @@
 | [src/packages/intelligence/ledger.py](src/packages/intelligence/ledger.py) | Learning run tracking — `what_did_you_learn`, feedback stats |
 | [src/packages/intelligence/router.py](src/packages/intelligence/router.py) | **Policy router** — scripts → local LLM → cloud LLM only when explicitly allowed |
 | [src/packages/intelligence/local\_llm/\_\_init\_\_.py](src/packages/intelligence/local_llm/__init__.py) | Ollama HTTP client — generate, chat, pull, is_available |
-| [src/packages/intelligence/cloud\_llm/\_\_init\_\_.py](src/packages/intelligence/cloud_llm/__init__.py) | Claude API client — generate, chat, is_available |
+| [src/packages/intelligence/cloud\_llm/\_\_init\_\_.py](src/packages/intelligence/cloud_llm/__init__.py) | Cloud LLM dispatcher — delegates to active provider |
+| [src/packages/intelligence/providers/\_\_init\_\_.py](src/packages/intelligence/providers/__init__.py) | Provider protocol + registry — `get_provider(id)` dispatcher |
+| [src/packages/intelligence/providers/anthropic\_api.py](src/packages/intelligence/providers/anthropic_api.py) | Anthropic API key provider |
+| [src/packages/intelligence/providers/claude\_code\_oauth.py](src/packages/intelligence/providers/claude_code_oauth.py) | Claude Code PKCE OAuth — `run_oauth_flow()`, token refresh |
+| [src/packages/intelligence/providers/openai\_compat.py](src/packages/intelligence/providers/openai_compat.py) | OpenAI / Groq / custom endpoint provider (OpenAI-compatible API) |
+| [src/packages/intelligence/providers/gemini.py](src/packages/intelligence/providers/gemini.py) | Google Gemini provider — SDK + REST fallback |
 | [src/packages/intelligence/prompts.py](src/packages/intelligence/prompts.py) | Prompt template manager — bundled defaults + user-editable |
 | [src/packages/intelligence/summarizer.py](src/packages/intelligence/summarizer.py) | Session summary + memory enrichment via router |
 

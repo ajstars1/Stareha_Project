@@ -104,11 +104,22 @@ stareha exercise skip <id>           # Skip exercise
 stareha exercise list                # List pending exercises
 ```
 
+### Cloud LLM Management
+
+```bash
+stareha cloud-llm list               # Table of all 6 providers — configured/active status
+stareha cloud-llm status             # Active provider name, model, credential presence
+stareha cloud-llm use <provider>     # Switch active provider (claude_code_oauth|anthropic|openai|groq|gemini|openai_compat)
+stareha cloud-llm connect            # Claude Code OAuth — use claude.ai Pro/Max subscription
+stareha cloud-llm set-key <provider> [key]  # Set API key; openai_compat also prompts for base_url + model
+stareha cloud-llm clear <provider>   # Remove stored credentials for a provider
+```
+
 ### Talking Mode
 
 ```bash
 stareha talk                         # Open local LLM conversation mode
-stareha talk --cloud                 # Explicitly allow Claude fallback
+stareha talk --cloud                 # Explicitly allow active cloud provider fallback
 ```
 
 ### Profile
@@ -153,17 +164,21 @@ stareha import claude-code           # Force Claude Code import
 
 ## Terminal Integration
 
-The shell hook is added to `~/.zshrc` or `~/.bashrc` by `stareha setup` or the advanced `stareha init`:
+The shell hook is added to `~/.zshrc` by `stareha setup` or `stareha init`. It fires after each command and POSTs to the daemon's event receiver on port 7431:
 
 ```bash
-# Stareha shell integration
-stareha_hook() {
-  stareha event command \
-    --cmd "$1" --exit-code "$?" \
-    --pwd "$PWD" --ts "$(date +%s)" 2>/dev/null
+# Stareha shell integration — added by `stareha init`
+_stareha_hook() {
+  local cmd="$1" exit_code="$?" pwd="$PWD"
+  { curl -sf -X POST http://localhost:7431/event \
+    -H 'Content-Type: application/json' \
+    -d "{\"type\":\"command\",\"cmd\":\"$cmd\",\"exit\":$exit_code,\"pwd\":\"$pwd\",\"ts\":$(date +%s)}" \
+    >/dev/null 2>&1; } &!
 }
-precmd_functions+=(stareha_hook)
+precmd_functions+=(_stareha_hook)
 ```
+
+The `&!` disowns the background curl job so failed connection attempts (daemon not running) do not produce terminal noise.
 
 ---
 
