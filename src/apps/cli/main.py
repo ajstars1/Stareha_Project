@@ -152,7 +152,7 @@ def cli(ctx):
 @cli.command()
 @click.pass_context
 def setup(ctx):
-    """First-time setup wizard."""
+    """First-time setup — mode, workspace, and AI provider."""
     console.print("\n[bold]Welcome to Stareha Learn.[/bold]")
     console.print("[dim]Setup takes about two minutes and keeps raw data local.[/dim]\n")
 
@@ -1343,9 +1343,9 @@ def local_llm_prompts():
 
 # ── stareha cloud-llm ────────────────────────────────────────────────────────
 
-@cli.group("cloud-llm", hidden=True)
+@cli.group("cloud-llm")
 def cloud_llm_group():
-    """Connect an AI provider — Claude, OpenAI, Groq, Gemini, or any endpoint."""
+    """Connect an AI provider (Claude, OpenAI, Groq, Gemini)."""
 
 
 @cloud_llm_group.command("status")
