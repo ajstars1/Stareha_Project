@@ -136,7 +136,7 @@ def cli(ctx):
       stareha continue              — pick up next time
 
     Run any command with --help for details.
-    Advanced controls: memory, permissions, local-llm, cloud-llm, status.
+    Advanced controls: memory, permissions, llm, status.
     """
     if ctx.invoked_subcommand is not None:
         return
@@ -219,56 +219,21 @@ def setup(ctx):
     # ── LLM setup ──────────────────────────────────────────────────────────────
     console.print("\n[bold]How should Stareha generate insights?[/bold]")
     console.print("[dim]Stareha needs an LLM to summarize what you learn and answer questions.[/dim]\n")
-    console.print("1. Cloud LLM (Recommended for best results)")
-    console.print("   Uses Claude via Anthropic API. Requires an API key.")
-    console.print("   Get one free at: console.anthropic.com")
-    console.print("2. Local LLM (Private, runs on your machine)")
-    console.print("   Uses Ollama. Requires Ollama installed and ~2GB disk.")
-    console.print("3. Skip for now")
-    console.print("   You can configure this later with: stareha local-llm status\n")
-    llm_choice = click.prompt(
-        "Choose LLM setup",
-        type=click.Choice(["1", "2", "3"], case_sensitive=False),
-        default="1",
-        show_default=True,
-    )
 
-    if llm_choice == "1":
-        from packages.intelligence.cloud_llm import is_available as _cloud_ok, _api_key
-        existing = _api_key()
-        if existing:
-            console.print("[green]✓ Cloud LLM already configured.[/green]")
-        else:
-            api_key = click.prompt(
-                "Anthropic API key",
-                hide_input=True,
-                default="",
-                show_default=False,
-                prompt_suffix=" (paste here, input hidden): ",
-            )
-            if api_key.strip():
-                save_config({"cloud_llm_api_key": api_key.strip()})
-                console.print("[green]✓ API key saved to ~/.stareha/config.json[/green]")
-                console.print("[dim]  (also works if you set ANTHROPIC_API_KEY in your shell)[/dim]")
-            else:
-                console.print("[yellow]  Skipped — set ANTHROPIC_API_KEY in your shell or re-run setup.[/yellow]")
-
-    elif llm_choice == "2":
-        from packages.intelligence import local_llm as _llm
-        config_now = load_config()
-        if _llm.is_available(config_now.local_llm_base_url):
-            console.print(f"[green]✓ Ollama is running.[/green] Default model: {config_now.local_llm_model}")
-            if click.confirm(f"Pull {config_now.local_llm_model} now?", default=True):
-                ok = _llm.pull(config_now.local_llm_model, base_url=config_now.local_llm_base_url)
-                if ok:
-                    console.print(f"[green]✓ {config_now.local_llm_model} ready.[/green]")
-                else:
-                    console.print(f"[yellow]Pull failed — run manually: ollama pull {config_now.local_llm_model}[/yellow]")
-        else:
-            console.print("[yellow]Ollama not found at http://localhost:11434[/yellow]")
-            console.print("  Install Ollama: https://ollama.com/download")
-            console.print(f"  Then run: [bold]ollama pull {config_now.local_llm_model}[/bold]")
-            console.print("  And: [bold]stareha local-llm status[/bold] to verify")
+    from packages.intelligence.cloud_llm import is_available as _cloud_ok
+    if _cloud_ok():
+        console.print("[green]✓ LLM already configured.[/green]  Run [bold]stareha llm status[/bold] to review.")
+    else:
+        console.print("3. Skip for now")
+        console.print("   Configure later with: [bold]stareha llm setup[/bold]\n")
+        llm_choice = click.prompt(
+            "Set up an LLM now?",
+            type=click.Choice(["y", "n"], case_sensitive=False),
+            default="y",
+            show_default=True,
+        )
+        if llm_choice == "y":
+            ctx.invoke(llm_setup)
 
     console.print("\n[bold green]Setup complete.[/bold green]")
     console.print("[dim]Restart your shell once so the terminal hook is active.[/dim]")
@@ -483,19 +448,33 @@ def status():
     # Intelligence layer status
     console.rule(style="dim")
     try:
-        from packages.intelligence.router import status as llm_status
-        s = llm_status()
-        local = s["local_llm"]
-        cloud = s["cloud_llm"]
-        if local["available"]:
-            models = ", ".join(local["models"][:3]) or local["configured_model"]
-            console.print(f"[bold]Local LLM[/bold]  [green]✓[/green] {local['base_url']} — {models}")
+        from packages.intelligence import local_llm as _llm
+        from packages.intelligence.cloud_llm import is_available as _cloud_ok
+        cfg_now = load_config()
+
+        local_ok = _llm.is_available(cfg_now.local_llm_base_url)
+        if local_ok:
+            models = _llm.list_models(cfg_now.local_llm_base_url)
+            model_str = ", ".join(models[:3]) if models else cfg_now.local_llm_model
+            console.print(f"[bold]Local LLM[/bold]  [green]✓[/green] {model_str}")
         else:
-            console.print(f"[bold]Local LLM[/bold]  [dim]✗ Ollama not running — install at ollama.ai[/dim]")
-        if cloud["available"]:
-            console.print(f"[bold]Cloud LLM[/bold]  [green]✓[/green] {cloud['configured_model']}")
+            console.print(f"[bold]Local LLM[/bold]  [dim]✗ not running — stareha llm setup[/dim]")
+
+        if _cloud_ok():
+            providers = cfg_now.llm_providers
+            active = cfg_now.active_cloud_provider
+            if active and active in providers:
+                meta = _PROVIDER_META.get(active, {"name": active})
+                model = providers[active].get("model", "")
+                console.print(f"[bold]Cloud LLM[/bold]  [green]✓[/green] {meta['name']} — {model}")
+            else:
+                # Fall back: find any connected provider
+                for pid, pcfg in providers.items():
+                    meta = _PROVIDER_META.get(pid, {"name": pid})
+                    console.print(f"[bold]Cloud LLM[/bold]  [green]✓[/green] {meta['name']} — {pcfg.get('model', '')}")
+                    break
         else:
-            console.print("[bold]Cloud LLM[/bold]  [dim]✗ set ANTHROPIC_API_KEY to enable[/dim]")
+            console.print("[bold]Cloud LLM[/bold]  [dim]✗ not configured — stareha llm setup[/dim]")
     except Exception:
         pass
 
@@ -1341,28 +1320,259 @@ def local_llm_prompts():
     console.print("\nEdit any file to customise how Stareha generates summaries and quizzes.")
 
 
-# ── stareha cloud-llm ────────────────────────────────────────────────────────
+# ── Provider registry ─────────────────────────────────────────────────────────
 
-@cli.group("cloud-llm")
+_CLOUD_PROVIDERS = [
+    {
+        "id": "claude_code_oauth",
+        "name": "Claude Code (claude.ai)",
+        "auth": "OAuth",
+        "model": "claude-sonnet-4-6",
+        "url": "claude.ai/code",
+        "hint": "Uses your existing claude.ai Pro/Max subscription — no API key needed",
+    },
+    {
+        "id": "anthropic",
+        "name": "Claude (Anthropic)",
+        "auth": "API key",
+        "model": "claude-sonnet-4-6",
+        "url": "console.anthropic.com",
+        "hint": "sk-ant-...",
+    },
+    {
+        "id": "gemini",
+        "name": "Gemini (Google)",
+        "auth": "API key",
+        "model": "gemini-3.1-flash-lite",
+        "url": "aistudio.google.com",
+        "hint": "AIzaSy...",
+    },
+    {
+        "id": "openai",
+        "name": "OpenAI (GPT-4o)",
+        "auth": "API key",
+        "model": "gpt-4o",
+        "url": "platform.openai.com",
+        "hint": "sk-...",
+    },
+    {
+        "id": "groq",
+        "name": "Groq",
+        "auth": "API key",
+        "model": "llama-3.1-70b-versatile",
+        "url": "console.groq.com",
+        "hint": "gsk_...",
+    },
+]
+
+_PROVIDER_META = {p["id"]: p for p in _CLOUD_PROVIDERS}
+
+
+# ── stareha llm ───────────────────────────────────────────────────────────────
+
+@cli.group("llm")
+def llm_group():
+    """Set up and manage AI providers."""
+
+
+@llm_group.command("setup")
+def llm_setup():
+    """Connect a cloud or local LLM provider."""
+    console.print("\n[bold]LLM Setup[/bold]\n")
+    console.print("What type of LLM do you want to connect?\n")
+    console.print("  1. Cloud   (Claude, Gemini, OpenAI, Groq)")
+    console.print("  2. Local   (Ollama — runs on your machine, fully private)\n")
+
+    choice = click.prompt(
+        "Choose",
+        type=click.Choice(["1", "2"], case_sensitive=False),
+        default="1",
+        show_default=True,
+    )
+
+    if choice == "2":
+        _llm_setup_local()
+    else:
+        _llm_setup_cloud()
+
+
+def _llm_setup_cloud():
+    console.print("\n[bold]Cloud providers[/bold]\n")
+    for i, p in enumerate(_CLOUD_PROVIDERS, 1):
+        console.print(f"  {i}. {p['name']:<26}  {p['auth']:<9}  {p['url']}")
+    console.print()
+
+    choice = click.prompt(
+        "Pick a provider",
+        type=click.Choice([str(i) for i in range(1, len(_CLOUD_PROVIDERS) + 1)]),
+        default="1",
+        show_default=True,
+    )
+    provider = _CLOUD_PROVIDERS[int(choice) - 1]
+
+    if provider["id"] == "claude_code_oauth":
+        _llm_setup_claude_code_oauth()
+        return
+
+    console.print(f"\n  Get your key at: [bold]{provider['url']}[/bold]")
+    console.print(f"  Key format: [dim]{provider['hint']}[/dim]\n")
+
+    api_key = click.prompt("  Paste API key", hide_input=True, prompt_suffix=" (hidden): ")
+    if not api_key.strip():
+        console.print("[red]No key entered — cancelled.[/red]")
+        return
+
+    cfg = load_config()
+    providers = dict(cfg.llm_providers)
+    providers[provider["id"]] = {"api_key": api_key.strip(), "model": provider["model"]}
+
+    updates: dict = {
+        "llm_providers": providers,
+        "active_cloud_provider": provider["id"],
+    }
+    if provider["id"] == "anthropic":
+        updates["cloud_llm_api_key"] = api_key.strip()
+
+    save_config(updates)
+
+    console.print(f"\n[green]✓ {provider['name']} connected.[/green]")
+    console.print(f"  Model: [bold]{provider['model']}[/bold]   Active provider: {provider['name']}")
+    console.print("\nRun: [bold]stareha llm status[/bold]")
+
+
+def _llm_setup_claude_code_oauth():
+    from packages.intelligence.cloud_llm import _oauth_token
+    console.print("\n[bold]Claude Code OAuth[/bold]\n")
+    console.print("Uses your existing claude.ai Pro or Max subscription.")
+    console.print("[dim]No separate API key needed — tokens are read from ~/.claude/.credentials.json[/dim]\n")
+
+    token = _oauth_token()
+    if token:
+        cfg = load_config()
+        providers = dict(cfg.llm_providers)
+        providers["claude_code_oauth"] = {"model": "claude-sonnet-4-6", "source": "~/.claude/.credentials.json"}
+        save_config({"llm_providers": providers, "active_cloud_provider": "claude_code_oauth"})
+        console.print("[green]✓ Claude Code credentials found and connected.[/green]")
+        console.print("  Model: [bold]claude-sonnet-4-6[/bold]   Active provider: Claude Code (claude.ai)")
+        console.print("\nRun: [bold]stareha llm status[/bold]")
+    else:
+        console.print("[yellow]Claude Code credentials not found or expired.[/yellow]\n")
+        console.print("  1. Install Claude Code:  [bold]npm install -g @anthropic-ai/claude-code[/bold]")
+        console.print("                           or: [bold]pip install claude-code[/bold]")
+        console.print("  2. Login:                [bold]claude[/bold]  (follow the browser prompt)")
+        console.print("  3. Re-run:               [bold]stareha llm setup[/bold]")
+
+
+def _llm_setup_local():
+    from packages.intelligence import local_llm as _llm
+    cfg = load_config()
+    console.print("\n[bold]Local LLM (Ollama)[/bold]\n")
+
+    if _llm.is_available(cfg.local_llm_base_url):
+        models = _llm.list_models(cfg.local_llm_base_url)
+        model_str = ", ".join(models[:3]) if models else "none pulled yet"
+        console.print(f"[green]✓ Ollama is running.[/green]  Models: {model_str}")
+        if not models:
+            console.print(f"\nPull a model: [bold]ollama pull {cfg.local_llm_model}[/bold]")
+    else:
+        console.print("[yellow]Ollama is not running.[/yellow]\n")
+        console.print(f"  1. Install:  [bold]curl -fsSL https://ollama.ai/install.sh | sh[/bold]")
+        console.print(f"  2. Start:    [bold]ollama serve[/bold]")
+        console.print(f"  3. Pull:     [bold]ollama pull {cfg.local_llm_model}[/bold]")
+        console.print(f"  4. Re-run:   [bold]stareha llm setup[/bold]")
+        return
+
+    console.print("\nRun: [bold]stareha llm status[/bold]")
+
+
+@llm_group.command("status")
+def llm_status_cmd():
+    """Show connected providers and which is active."""
+    from packages.intelligence import local_llm as _llm
+
+    cfg = load_config()
+    providers = dict(cfg.llm_providers)
+    active = cfg.active_cloud_provider
+
+    # Pull in env-var key if not already in providers
+    env_key = os.environ.get("ANTHROPIC_API_KEY", "")
+    if env_key and "anthropic" not in providers:
+        providers["anthropic"] = {"api_key": env_key, "model": cfg.cloud_llm_model, "_from_env": True}
+        if not active:
+            active = "anthropic"
+
+    local_ok = _llm.is_available(cfg.local_llm_base_url)
+    local_models = _llm.list_models(cfg.local_llm_base_url) if local_ok else []
+
+    if not providers and not local_ok:
+        console.print("[dim]No LLM configured.[/dim]")
+        console.print("Run: [bold]stareha llm setup[/bold]")
+        return
+
+    console.print()
+
+    if providers:
+        from packages.intelligence.cloud_llm import _oauth_token
+        console.print("[bold]Cloud[/bold]")
+        for pid, pcfg in providers.items():
+            meta = _PROVIDER_META.get(pid, {"name": pid})
+            model = pcfg.get("model", "")
+            active_tag = "  [green][active][/green]" if pid == active else ""
+
+            if pid == "claude_code_oauth":
+                live_token = _oauth_token()
+                if live_token:
+                    source = "  [dim]~/.claude/.credentials.json[/dim]"
+                    status_mark = "[green]✓[/green]"
+                else:
+                    source = "  [yellow](token expired — run: claude)[/yellow]"
+                    status_mark = "[yellow]![/yellow]"
+            else:
+                status_mark = "[green]✓[/green]"
+                key = pcfg.get("api_key", "")
+                if pcfg.get("_from_env"):
+                    source = "  [dim]$ANTHROPIC_API_KEY[/dim]"
+                elif key:
+                    masked = key[:8] + "..." + key[-4:] if len(key) > 12 else "***"
+                    source = f"  [dim]{masked}[/dim]"
+                else:
+                    source = ""
+
+            console.print(f"  {status_mark} {meta['name']:<26}  {model}{active_tag}{source}")
+        console.print()
+
+    if local_ok:
+        console.print("[bold]Local[/bold]")
+        models_str = ", ".join(local_models[:3]) if local_models else cfg.local_llm_model
+        console.print(f"  [green]✓[/green] Ollama   {models_str}  [dim]({cfg.local_llm_base_url})[/dim]")
+        console.print()
+
+    # Contextual next-step hint
+    console.rule(style="dim")
+    has_cloud = bool(providers)
+    if has_cloud and local_ok:
+        console.print('[dim]Next:[/dim]  stareha learn "what you\'re studying"   — start a session')
+    elif has_cloud and not local_ok:
+        console.print('[dim]Next:[/dim]  stareha learn "what you\'re studying"   — start a session')
+        console.print('       stareha llm setup                      — add local LLM for private mode')
+    elif local_ok and not has_cloud:
+        console.print('[dim]Next:[/dim]  stareha learn "what you\'re studying"   — start a session')
+        console.print('       stareha llm setup                      — add a cloud provider')
+    console.print()
+
+
+# ── stareha cloud-llm (hidden — kept for backward compat) ────────────────────
+
+@cli.group("cloud-llm", hidden=True)
 def cloud_llm_group():
-    """Connect an AI provider (Claude, OpenAI, Groq, Gemini)."""
+    """Connect an AI provider (use `stareha llm` instead)."""
 
 
 @cloud_llm_group.command("status")
 def cloud_llm_status():
     """Show active provider, model, and credential status."""
-    from packages.intelligence.cloud_llm import is_available, _api_key
-    key = _api_key()
-    if key:
-        masked = key[:8] + "..." + key[-4:] if len(key) > 12 else "***"
-        console.print(f"[green]✓ Cloud LLM available[/green]  (key: {masked})")
-        console.print(f"  Model: {load_config().cloud_llm_model}")
-        console.print("  Source: ANTHROPIC_API_KEY env" if os.environ.get("ANTHROPIC_API_KEY") else "  Source: ~/.stareha/config.json")
-    else:
-        console.print("[yellow]✗ Cloud LLM not configured[/yellow]")
-        console.print("  Run: [bold]stareha cloud-llm set-key[/bold]")
-        console.print("  Or:  export ANTHROPIC_API_KEY=sk-ant-...")
-        console.print("  Get a key at: console.anthropic.com")
+    ctx = click.get_current_context()
+    ctx.invoke(llm_status_cmd)
 
 
 @cloud_llm_group.command("set-key")
@@ -1370,19 +1580,30 @@ def cloud_llm_status():
 def cloud_llm_set_key(api_key):
     """Save an API key for a provider."""
     if not api_key:
-        api_key = click.prompt("Anthropic API key", hide_input=True, prompt_suffix=" (input hidden): ")
+        api_key = click.prompt("Anthropic API key", hide_input=True, prompt_suffix=" (hidden): ")
     if not api_key.strip():
         console.print("[red]No key provided.[/red]")
         return
-    save_config({"cloud_llm_api_key": api_key.strip()})
-    console.print("[green]✓ API key saved.[/green]  Test with: stareha cloud-llm status")
+    cfg = load_config()
+    providers = dict(cfg.llm_providers)
+    providers["anthropic"] = {"api_key": api_key.strip(), "model": cfg.cloud_llm_model}
+    save_config({
+        "cloud_llm_api_key": api_key.strip(),
+        "llm_providers": providers,
+        "active_cloud_provider": "anthropic",
+    })
+    console.print("[green]✓ API key saved.[/green]  Run: stareha llm status")
 
 
 @cloud_llm_group.command("clear-key")
 def cloud_llm_clear_key():
     """Remove stored credentials for a provider."""
-    save_config({"cloud_llm_api_key": ""})
-    console.print("[green]✓ API key cleared from config.[/green]")
+    cfg = load_config()
+    providers = dict(cfg.llm_providers)
+    providers.pop("anthropic", None)
+    active = cfg.active_cloud_provider if cfg.active_cloud_provider != "anthropic" else ""
+    save_config({"cloud_llm_api_key": "", "llm_providers": providers, "active_cloud_provider": active})
+    console.print("[green]✓ Anthropic key cleared.[/green]")
 
 
 # ── stareha talk ──────────────────────────────────────────────────────────────

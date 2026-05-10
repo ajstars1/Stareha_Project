@@ -104,15 +104,28 @@ stareha exercise skip <id>           # Skip exercise
 stareha exercise list                # List pending exercises
 ```
 
-### Cloud LLM Management
+### LLM Management
 
 ```bash
-stareha cloud-llm list               # Table of all 6 providers — configured/active status
-stareha cloud-llm status             # Active provider name, model, credential presence
-stareha cloud-llm use <provider>     # Switch active provider (claude_code_oauth|anthropic|openai|groq|gemini|openai_compat)
-stareha cloud-llm connect            # Claude Code OAuth — use claude.ai Pro/Max subscription
-stareha cloud-llm set-key <provider> [key]  # Set API key; openai_compat also prompts for base_url + model
-stareha cloud-llm clear <provider>   # Remove stored credentials for a provider
+stareha llm setup                    # Guided wizard — Cloud or Local, pick provider, set credentials
+stareha llm status                   # Show only connected providers + which is active
+```
+
+Cloud providers (selectable in wizard):
+
+| Provider ID | Display name | Auth |
+|-------------|-------------|------|
+| `claude_code_oauth` | Claude Code (claude.ai) | OAuth — reads `~/.claude/.credentials.json`, no API key needed |
+| `anthropic` | Claude (Anthropic) | API key — `console.anthropic.com` |
+| `gemini` | Gemini (Google) | API key — `aistudio.google.com` |
+| `openai` | OpenAI (GPT-4o) | API key — `platform.openai.com` |
+| `groq` | Groq | API key — `console.groq.com` |
+
+Legacy alias (hidden, backward compat):
+
+```bash
+stareha cloud-llm set-key            # still works, writes to new config structure
+stareha cloud-llm status             # delegates to stareha llm status
 ```
 
 ### Talking Mode

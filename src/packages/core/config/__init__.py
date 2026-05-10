@@ -13,8 +13,11 @@ DEFAULTS = {
     "watched_paths": [],
     "idle_threshold_seconds": 1800,
     "cloud_llm_model": "claude-sonnet-4-6",
+    "cloud_llm_api_key": "",
     "local_llm_model": "llama3.2:3b",
     "local_llm_base_url": "http://localhost:11434",
+    "llm_providers": {},
+    "active_cloud_provider": "",
 }
 
 
@@ -28,8 +31,11 @@ class Config:
     watched_paths: list[str]
     idle_threshold_seconds: int
     cloud_llm_model: str
+    cloud_llm_api_key: str
     local_llm_model: str
     local_llm_base_url: str
+    llm_providers: dict
+    active_cloud_provider: str
 
 
 def load_config() -> Config:
@@ -37,6 +43,19 @@ def load_config() -> Config:
     if CONFIG_PATH.exists():
         with open(CONFIG_PATH) as f:
             raw.update(json.load(f))
+
+    # Migrate legacy cloud_llm_api_key into llm_providers
+    legacy_key = raw.get("cloud_llm_api_key", "")
+    if legacy_key and "anthropic" not in raw.get("llm_providers", {}):
+        providers = dict(raw.get("llm_providers", {}))
+        providers["anthropic"] = {
+            "api_key": legacy_key,
+            "model": raw.get("cloud_llm_model", "claude-sonnet-4-6"),
+        }
+        raw["llm_providers"] = providers
+        if not raw.get("active_cloud_provider"):
+            raw["active_cloud_provider"] = "anthropic"
+
     return Config(
         db_path=Path(raw["db_path"]).expanduser(),
         permissions_path=Path(raw["permissions_path"]).expanduser(),
@@ -46,8 +65,11 @@ def load_config() -> Config:
         watched_paths=raw["watched_paths"],
         idle_threshold_seconds=int(raw["idle_threshold_seconds"]),
         cloud_llm_model=raw["cloud_llm_model"],
+        cloud_llm_api_key=raw.get("cloud_llm_api_key", ""),
         local_llm_model=raw["local_llm_model"],
         local_llm_base_url=raw["local_llm_base_url"],
+        llm_providers=raw.get("llm_providers", {}),
+        active_cloud_provider=raw.get("active_cloud_provider", ""),
     )
 
 

@@ -7,7 +7,7 @@
 
 ## What It Is
 
-Cloud LLM is the most capable intelligence layer. It supports six providers and is not enabled by beginner setup. It is used only when a command explicitly allows cloud fallback or the user has configured a provider through `stareha setup` or `stareha cloud-llm`.
+Cloud LLM is the most capable intelligence layer. It supports five providers and is not enabled by beginner setup. It is used only when a command explicitly allows cloud fallback or the user has configured a provider through `stareha setup` or `stareha llm setup`.
 
 ---
 
@@ -15,34 +15,30 @@ Cloud LLM is the most capable intelligence layer. It supports six providers and 
 
 | Provider ID | Display name | Auth |
 |-------------|-------------|------|
-| `claude_code_oauth` | Claude Code (claude.ai subscription) | PKCE OAuth — no API key needed |
-| `anthropic` | Anthropic API key | `ANTHROPIC_API_KEY` or config |
-| `openai` | OpenAI | `OPENAI_API_KEY` or config |
-| `groq` | Groq | `GROQ_API_KEY` or config |
-| `gemini` | Google Gemini | `GEMINI_API_KEY` or config |
-| `openai_compat` | Custom OpenAI-compatible endpoint | API key + base URL |
+| `claude_code_oauth` | Claude Code (claude.ai) | OAuth — reads `~/.claude/.credentials.json`, no API key needed |
+| `anthropic` | Claude (Anthropic) | API key — `console.anthropic.com` |
+| `gemini` | Gemini (Google) | API key — `aistudio.google.com` |
+| `openai` | OpenAI (GPT-4o) | API key — `platform.openai.com` |
+| `groq` | Groq | API key — `console.groq.com` |
 
-The active provider is stored as `cloud_provider` in `~/.stareha/config.json`. Per-provider credentials live under `provider_configs.<id>`.
+Active provider stored as `active_cloud_provider` in `~/.stareha/config.json`. Per-provider credentials stored under `llm_providers.<id>`.
 
 ### Claude Code OAuth (recommended)
 Uses your existing claude.ai Pro or Max subscription — no separate API key.
+The setup wizard checks `~/.claude/.credentials.json` (written by Claude Code CLI on login). Token expiry is checked at call time with a 120-second buffer.
 ```bash
-stareha cloud-llm connect       # opens browser → paste code → tokens saved
+stareha llm setup               # select "Cloud" → "Claude Code (claude.ai)" → done
 ```
-Token storage: `~/.stareha/claude_code_oauth.json` + `provider_configs.claude_code_oauth` in config.
-Tokens auto-refresh 120 seconds before expiry.
 
 ### API key providers
 ```bash
-stareha cloud-llm set-key anthropic   # or openai / groq / gemini
-stareha cloud-llm set-key openai_compat  # also prompts for base_url + model
+stareha llm setup               # select "Cloud" → pick provider → paste key
 ```
 
-### Switching providers
+### Status and switching
 ```bash
-stareha cloud-llm list          # table of all providers with status
-stareha cloud-llm use groq      # set active provider
-stareha cloud-llm status        # show active provider + model
+stareha llm status              # show connected providers + active one
+stareha llm setup               # re-run to add or switch provider
 ```
 
 ---
@@ -113,11 +109,10 @@ Private conversations from Claude Code.
 | Provider | Default model |
 |----------|--------------|
 | `claude_code_oauth` | `claude-sonnet-4-6` |
-| `anthropic` | `claude-haiku-4-5-20251001` |
-| `openai` | `gpt-4o-mini` |
-| `groq` | `llama3-8b-8192` |
-| `gemini` | `gemini-1.5-flash` |
-| `openai_compat` | (user-specified) |
+| `anthropic` | `claude-sonnet-4-6` |
+| `gemini` | `gemini-3.1-flash-lite` |
+| `openai` | `gpt-4o` |
+| `groq` | `llama-3.1-70b-versatile` |
 
 Override per-provider with `save_config({"provider_configs": {"groq": {"model": "llama3-70b-8192"}}})`.
 

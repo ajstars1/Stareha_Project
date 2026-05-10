@@ -83,7 +83,7 @@ macOS support is planned but not yet implemented (inotify is Linux-specific; req
 
 **Optional — for better intelligence:**
 - [Ollama](https://ollama.ai) — local LLM, keeps everything private
-- `ANTHROPIC_API_KEY` — for cloud LLM fallback and `stareha talk --cloud`
+- Cloud LLM — Claude, Gemini, OpenAI, or Groq via `stareha llm setup`
 
 ---
 
@@ -248,6 +248,15 @@ stareha quiz --cloud "CSS flexbox" # explicitly allow Claude fallback
 stareha quiz                     # run the latest prepared quiz
 ```
 
+### LLM management
+
+```bash
+stareha llm setup                # connect a cloud or local provider (guided wizard)
+stareha llm status               # show connected providers and which is active
+```
+
+Supported cloud providers: Claude Code (OAuth — uses your claude.ai subscription), Claude (Anthropic API key), Gemini, OpenAI, Groq.
+
 ### Local LLM (Ollama)
 
 ```bash
@@ -261,7 +270,7 @@ stareha local-llm prompts        # export default prompts to ~/.stareha/prompts/
 
 ```bash
 stareha talk                     # conversation using local LLM + your memories
-stareha talk --cloud             # explicitly use Claude fallback (requires ANTHROPIC_API_KEY)
+stareha talk --cloud             # explicitly use active cloud provider
 ```
 
 Context sent = approved memories only. Never raw events.
@@ -338,15 +347,20 @@ With Ollama running:
 ## Cloud LLM setup (optional)
 
 ```bash
-export ANTHROPIC_API_KEY=sk-ant-...
-stareha status
-# → Cloud LLM  ✓ claude-sonnet-4-6
+stareha llm setup
+# Guided wizard — pick Cloud or Local
+# Cloud options: Claude Code (OAuth), Claude API key, Gemini, OpenAI, Groq
 
-stareha talk --cloud             # chat with Claude using approved memories as context
-stareha quiz --cloud "Flexbox"   # explicitly allow Claude fallback for this quiz
+stareha llm status
+# → Cloud LLM  ✓ Gemini (Google) — gemini-3.1-flash-lite
+
+stareha talk --cloud             # chat using active cloud provider + your approved memories
+stareha quiz --cloud "Flexbox"   # explicitly allow cloud fallback for this quiz
 ```
 
-Cloud is not enabled by setup. Context sent to Claude is summary-only and command-specific. Never raw events. Never command history.
+Cloud is not enabled by setup. Context sent is summary-only and command-specific. Never raw events. Never command history.
+
+**Recommended:** Claude Code OAuth — if you have a claude.ai Pro or Max subscription, no API key needed. The wizard reads `~/.claude/.credentials.json` automatically.
 
 ---
 
@@ -361,7 +375,7 @@ Cloud is not enabled by setup. Context sent to Claude is summary-only and comman
 | Pattern extraction | Deterministic scripts |
 | Product experience | Beginner CLI wrapper + Learning Card |
 | Local LLM | Ollama via httpx |
-| Cloud LLM | Anthropic Claude via SDK |
+| Cloud LLM | Claude (OAuth + API key), Gemini, OpenAI, Groq |
 | CLI | Click + Rich |
 | Redaction | Regex (ported from Hermes/NearAI) |
 
