@@ -15,10 +15,10 @@ SHELL_HOOK_ZSH = """
 # Stareha shell integration — added by `stareha init`
 _stareha_hook() {
   local cmd="$1" exit_code="$?" pwd="$PWD"
-  curl -sf -X POST http://localhost:7431/event \\
+  (curl -sf -X POST http://localhost:7431/event \\
     -H 'Content-Type: application/json' \\
     -d "{\\"type\\":\\"command\\",\\"cmd\\":\\"$cmd\\",\\"exit\\":$exit_code,\\"pwd\\":\\"$pwd\\",\\"ts\\":$(date +%s)}" \\
-    2>/dev/null &
+    >/dev/null 2>&1 &)
 }
 precmd_functions+=(_stareha_hook)
 """.strip()
