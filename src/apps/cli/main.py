@@ -16,24 +16,8 @@ from rich.table import Table
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
-from packages.core.config import load_config, save_config, ensure_dirs
+from packages.core.config import ensure_dirs, load_config, save_config
 from packages.core.db import Store
-from packages.permissions import enable_source, list_permissions
-from packages.intelligence.learning_runner import run_learning
-from packages.intelligence.ledger import (
-    what_did_you_learn, recent_runs, feedback_stats, get_rejection_counts,
-)
-from packages.memory.manager import (
-    approve_candidate, reject_candidate, forget_memory,
-    get_memory_why, list_memories, search_memories,
-    get_sources, memory_stats,
-)
-from packages.guidance.briefing import format_briefing_cli
-from packages.guidance.quiz import generate_quiz, run_quiz_interactive
-from packages.guidance.prep import (
-    prepare_guidance, get_pending, get_all_guidance,
-    mark_delivered, mark_completed, add_note,
-)
 from packages.experience.continuation import build_continue_plan, format_continue_plan_cli
 from packages.experience.home import build_home, format_home_cli
 from packages.experience.learning_card import build_learning_card, format_learning_card_cli
@@ -41,6 +25,34 @@ from packages.experience.mode_presets import DEFAULT_MODE, MODE_PRESETS
 from packages.experience.project_registry import remember_project
 from packages.experience.project_resolver import resolve_project
 from packages.experience.review_flow import review_notices
+from packages.guidance.briefing import format_briefing_cli
+from packages.guidance.prep import (
+    add_note,
+    get_all_guidance,
+    get_pending,
+    mark_completed,
+    mark_delivered,
+    prepare_guidance,
+)
+from packages.guidance.quiz import generate_quiz, run_quiz_interactive
+from packages.intelligence.learning_runner import run_learning
+from packages.intelligence.ledger import (
+    feedback_stats,
+    get_rejection_counts,
+    recent_runs,
+    what_did_you_learn,
+)
+from packages.memory.manager import (
+    approve_candidate,
+    forget_memory,
+    get_memory_why,
+    get_sources,
+    list_memories,
+    memory_stats,
+    reject_candidate,
+    search_memories,
+)
+from packages.permissions import enable_source, list_permissions
 
 console = Console()
 
@@ -80,7 +92,7 @@ def _start_daemon_direct() -> bool:
     daemon_script = Path(__file__).resolve().parents[1] / "daemon" / "main.py"
     if not daemon_script.exists():
         return False
-    proc = subprocess.Popen(
+    subprocess.Popen(
         [sys.executable, str(daemon_script)],
         start_new_session=True,      # detach — survives when CLI exits
         stdout=subprocess.DEVNULL,
@@ -311,7 +323,7 @@ def init():
 
 
 def _install_shell_hook() -> None:
-    from packages.collectors.terminal.hook_receiver import SHELL_HOOK_ZSH, SHELL_HOOK_BASH
+    from packages.collectors.terminal.hook_receiver import SHELL_HOOK_BASH, SHELL_HOOK_ZSH
     shell = os.environ.get("SHELL", "")
     if "zsh" in shell:
         rc = Path.home() / ".zshrc"
@@ -396,7 +408,7 @@ def daemon():
 def status():
     """Show Stareha's status, active session, and sources."""
     pid = _daemon_pid()
-    config = load_config()
+    load_config()
 
     # Daemon status line
     if pid:
@@ -458,7 +470,7 @@ def status():
             model_str = ", ".join(models[:3]) if models else cfg_now.local_llm_model
             console.print(f"[bold]Local LLM[/bold]  [green]✓[/green] {model_str}")
         else:
-            console.print(f"[bold]Local LLM[/bold]  [dim]✗ not running — stareha llm setup[/dim]")
+            console.print("[bold]Local LLM[/bold]  [dim]✗ not running — stareha llm setup[/dim]")
 
         if _cloud_ok():
             providers = cfg_now.llm_providers
@@ -504,7 +516,7 @@ def session_start(goal):
         console.print(format_briefing_cli(latest["content"]))
         mark_delivered(store, latest["id"])
 
-    session_id = store.start_session(goal=goal)
+    store.start_session(goal=goal)
     store.close()
     msg = "Session started"
     if goal:
@@ -534,9 +546,9 @@ def session_stop():
         console.print("[dim]Learning: no new patterns found.[/dim]")
 
     # Session summary via local LLM (non-blocking — silently skipped if unavailable)
-    from packages.intelligence.summarizer import summarize_session
-    from packages.intelligence import local_llm as _llm
     from packages.core.config import load_config as _cfg
+    from packages.intelligence import local_llm as _llm
+    from packages.intelligence.summarizer import summarize_session
     if _llm.is_available(_cfg().local_llm_base_url):
         with console.status("[dim]Generating session summary...[/dim]"):
             summary = summarize_session(store, active["id"])
@@ -677,7 +689,7 @@ def what_did_you_learn_cmd(period):
             short_id = m["id"][:8]
             console.print(f"  [dim][{short_id}][/dim] {m['content']}")
     else:
-        console.print(f"\n[dim]Memories approved: 0[/dim]")
+        console.print("\n[dim]Memories approved: 0[/dim]")
 
     # Pending
     pending = data["pending_in_inbox"]
@@ -743,7 +755,7 @@ def ledger(limit):
     # Rejection gates
     if rejections:
         console.print("\n[bold]Feedback gates[/bold]  (pattern types slowed by rejections)")
-        from packages.intelligence.learning_runner import _REJECTION_BARS, _confidence_bar
+        from packages.intelligence.learning_runner import _confidence_bar
         for (ptype, source), count in sorted(rejections.items(), key=lambda x: -x[1]):
             bar = _confidence_bar(count)
             if bar > 0:
@@ -1234,11 +1246,11 @@ def note(text):
         project=active["project"] if active else None,
     )
     store.close()
-    console.print(f"[green]✓[/green] Note saved. This will inform your next guidance.")
+    console.print("[green]✓[/green] Note saved. This will inform your next guidance.")
     if active:
         console.print("[dim]Linked to the current learning session.[/dim]")
     else:
-        console.print(f"[dim]Tip: run `stareha prep` to regenerate your briefing.[/dim]")
+        console.print("[dim]Tip: run `stareha prep` to regenerate your briefing.[/dim]")
 
 
 # ── stareha local-llm ────────────────────────────────────────────────────────
@@ -1252,8 +1264,8 @@ def local_llm_group():
 @local_llm_group.command("status")
 def local_llm_status():
     """Show Ollama availability, models, and config."""
-    from packages.intelligence.router import status as llm_status
     from packages.intelligence.prompts import list_prompts
+    from packages.intelligence.router import status as llm_status
     s = llm_status()
     local = s["local_llm"]
     cloud = s["cloud_llm"]
@@ -1292,8 +1304,8 @@ def local_llm_status():
 @click.argument("model", default=None, required=False)
 def local_llm_pull(model):
     """Pull a model into Ollama (e.g. llama3.2:3b, mistral:7b)."""
-    from packages.intelligence import local_llm as _llm
     from packages.core.config import load_config as _cfg
+    from packages.intelligence import local_llm as _llm
     config = _cfg()
     target = model or config.local_llm_model
 
@@ -1312,7 +1324,7 @@ def local_llm_pull(model):
 @local_llm_group.command("prompts")
 def local_llm_prompts():
     """Export default prompt templates to ~/.stareha/prompts/ for editing."""
-    from packages.intelligence.prompts import export_defaults, list_prompts, _PROMPTS_DIR
+    from packages.intelligence.prompts import _PROMPTS_DIR, export_defaults, list_prompts
     export_defaults()
     console.print(f"[green]✓[/green] Default prompts written to {_PROMPTS_DIR}\n")
     for p in list_prompts():
@@ -1476,10 +1488,10 @@ def _llm_setup_local():
             console.print(f"\nPull a model: [bold]ollama pull {cfg.local_llm_model}[/bold]")
     else:
         console.print("[yellow]Ollama is not running.[/yellow]\n")
-        console.print(f"  1. Install:  [bold]curl -fsSL https://ollama.ai/install.sh | sh[/bold]")
-        console.print(f"  2. Start:    [bold]ollama serve[/bold]")
+        console.print("  1. Install:  [bold]curl -fsSL https://ollama.ai/install.sh | sh[/bold]")
+        console.print("  2. Start:    [bold]ollama serve[/bold]")
         console.print(f"  3. Pull:     [bold]ollama pull {cfg.local_llm_model}[/bold]")
-        console.print(f"  4. Re-run:   [bold]stareha llm setup[/bold]")
+        console.print("  4. Re-run:   [bold]stareha llm setup[/bold]")
         return
 
     console.print("\nRun: [bold]stareha llm status[/bold]")
