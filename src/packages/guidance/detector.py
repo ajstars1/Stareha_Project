@@ -12,9 +12,7 @@ Signal hierarchy (highest to lowest weight):
 """
 import json
 import re
-import time
 from collections import Counter, defaultdict
-from datetime import date, datetime
 from pathlib import Path
 from typing import Optional
 
