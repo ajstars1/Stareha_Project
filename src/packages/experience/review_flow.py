@@ -1,7 +1,5 @@
 """Beginner-facing review flow for memory candidates."""
 
-from __future__ import annotations
-
 import click
 from rich.console import Console
 
@@ -9,8 +7,9 @@ from packages.core.db import Store
 from packages.memory.manager import approve_candidate, reject_candidate
 
 
-def pending_notices(store: Store, *, since: int | None = None,
-                    project: str | None = None, limit: int = 5) -> list[dict]:
+def pending_notices(
+    store: Store, *, since: int | None = None, project: str | None = None, limit: int = 5
+) -> list[dict]:
     params: list = []
     q = "SELECT * FROM memory_candidates WHERE status='pending'"
     if since:
@@ -58,4 +57,3 @@ def review_notices(
                 console.print("[green]Edited and saved.[/green]")
             else:
                 console.print("[dim]Skipped.[/dim]")
-
