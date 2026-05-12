@@ -6,10 +6,9 @@ Shell hook is installed to ~/.zshrc by `stareha init`.
 import json
 import threading
 from http.server import BaseHTTPRequestHandler, HTTPServer
-from typing import Optional
 
-from packages.shared.redact import redact_sensitive_text
 from packages.permissions import can_collect
+from packages.shared.redact import redact_sensitive_text
 
 SHELL_HOOK_ZSH = """
 # Stareha shell integration — added by `stareha init`
@@ -85,8 +84,7 @@ def _handle_event(data: dict, store) -> None:
     )
 
 
-def _detect_project(pwd: str) -> Optional[str]:
-    from pathlib import Path
+def _detect_project(pwd: str) -> str | None:
     import subprocess
     try:
         result = subprocess.run(
