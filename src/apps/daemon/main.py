@@ -13,14 +13,14 @@ from pathlib import Path
 # Add src/ to path so packages resolve
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
-from packages.core.config import load_config, ensure_dirs
-from packages.core.db import Store
-from packages.permissions import can_collect, list_permissions
+from packages.collectors.browser import scan_browser_history
+from packages.collectors.claude_code import scan_claude_code
+from packages.collectors.files.watcher import start_watcher
 from packages.collectors.terminal.history_scanner import scan_history
 from packages.collectors.terminal.hook_receiver import start_receiver
-from packages.collectors.files.watcher import start_watcher
-from packages.collectors.claude_code import scan_claude_code
-from packages.collectors.browser import scan_browser_history
+from packages.core.config import ensure_dirs, load_config
+from packages.core.db import Store
+from packages.permissions import can_collect
 
 PID_PATH = Path.home() / ".stareha" / "daemon.pid"
 
