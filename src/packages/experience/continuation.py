@@ -1,7 +1,5 @@
 """Build the beginner-facing continue experience."""
 
-from __future__ import annotations
-
 import json
 
 from packages.core.db import Store
