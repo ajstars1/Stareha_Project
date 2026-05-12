@@ -1,7 +1,5 @@
 """Project registry backed by the existing metadata table."""
 
-from __future__ import annotations
-
 import json
 import time
 
@@ -37,4 +35,3 @@ def remember_project(store: Store, resolution: ProjectResolution | None) -> None
     }
     kept = [p for p in projects if p.get("path") != resolution.path]
     store.set_meta(REGISTRY_KEY, json.dumps([next_row, *kept][:50]))
-
