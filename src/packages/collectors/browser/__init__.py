@@ -78,6 +78,12 @@ def scan_chrome(store, since: Optional[int] = None) -> int:
     if not can_collect("browser"):
         return 0
 
+    existing_keys = {
+        r[0] for r in store._conn.execute(
+            "SELECT json_extract(content, '$.dedup') FROM events WHERE source='browser'"
+        ).fetchall() if r[0]
+    }
+
     imported = 0
     since_ts = since or 0
 
@@ -135,12 +141,9 @@ def scan_chrome(store, since: Optional[int] = None) -> int:
                 epoch = _chrome_ts_to_epoch(row["last_visit_time"])
                 dedup = _dedup_key("chrome", url, epoch)
 
-                if store._conn.execute(
-                    "SELECT id FROM events WHERE source='browser' "
-                    "AND json_extract(content,'$.dedup')=?",
-                    (dedup,),
-                ).fetchone():
+                if dedup in existing_keys:
                     continue
+                existing_keys.add(dedup)
 
                 title = redact_sensitive_text(row["title"] or "")
                 clean_url = redact_sensitive_text(url)
@@ -165,12 +168,9 @@ def scan_chrome(store, since: Optional[int] = None) -> int:
                 if not term or len(term) < 2:
                     continue
                 dedup = _dedup_key("chrome_search", term, url_id)
-                if store._conn.execute(
-                    "SELECT id FROM events WHERE source='browser' "
-                    "AND json_extract(content,'$.dedup')=?",
-                    (dedup,),
-                ).fetchone():
+                if dedup in existing_keys:
                     continue
+                existing_keys.add(dedup)
                 content = json.dumps({
                     "query": term,
                     "type": "search",
@@ -214,6 +214,12 @@ def scan_firefox(store, since: Optional[int] = None) -> int:
     if not can_collect("browser"):
         return 0
 
+    existing_keys = {
+        r[0] for r in store._conn.execute(
+            "SELECT json_extract(content, '$.dedup') FROM events WHERE source='browser'"
+        ).fetchall() if r[0]
+    }
+
     imported = 0
     since_epoch_us = (since or 0) * 1_000_000  # Firefox uses microseconds
 
@@ -243,12 +249,9 @@ def scan_firefox(store, since: Optional[int] = None) -> int:
                 epoch = (row["last_visit_date"] or 0) // 1_000_000
                 dedup = _dedup_key("firefox", url, epoch)
 
-                if store._conn.execute(
-                    "SELECT id FROM events WHERE source='browser' "
-                    "AND json_extract(content,'$.dedup')=?",
-                    (dedup,),
-                ).fetchone():
+                if dedup in existing_keys:
                     continue
+                existing_keys.add(dedup)
 
                 title = redact_sensitive_text(row["title"] or "")
                 clean_url = redact_sensitive_text(url)
