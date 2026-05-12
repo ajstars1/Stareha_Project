@@ -81,6 +81,13 @@ def scan_chrome(store, since: Optional[int] = None) -> int:
     imported = 0
     since_ts = since or 0
 
+    existing_dedups = {
+        row[0] for row in store._conn.execute(
+            "SELECT json_extract(content, '$.dedup') FROM events WHERE source='browser'"
+        ).fetchall()
+        if row[0] is not None
+    }
+
     for history_path in _CHROME_PATHS:
         if not history_path.exists():
             continue
@@ -135,12 +142,10 @@ def scan_chrome(store, since: Optional[int] = None) -> int:
                 epoch = _chrome_ts_to_epoch(row["last_visit_time"])
                 dedup = _dedup_key("chrome", url, epoch)
 
-                if store._conn.execute(
-                    "SELECT id FROM events WHERE source='browser' "
-                    "AND json_extract(content,'$.dedup')=?",
-                    (dedup,),
-                ).fetchone():
+                if dedup in existing_dedups:
                     continue
+
+                existing_dedups.add(dedup)
 
                 title = redact_sensitive_text(row["title"] or "")
                 clean_url = redact_sensitive_text(url)
@@ -165,12 +170,9 @@ def scan_chrome(store, since: Optional[int] = None) -> int:
                 if not term or len(term) < 2:
                     continue
                 dedup = _dedup_key("chrome_search", term, url_id)
-                if store._conn.execute(
-                    "SELECT id FROM events WHERE source='browser' "
-                    "AND json_extract(content,'$.dedup')=?",
-                    (dedup,),
-                ).fetchone():
+                if dedup in existing_dedups:
                     continue
+                existing_dedups.add(dedup)
                 content = json.dumps({
                     "query": term,
                     "type": "search",
@@ -217,6 +219,13 @@ def scan_firefox(store, since: Optional[int] = None) -> int:
     imported = 0
     since_epoch_us = (since or 0) * 1_000_000  # Firefox uses microseconds
 
+    existing_dedups = {
+        row[0] for row in store._conn.execute(
+            "SELECT json_extract(content, '$.dedup') FROM events WHERE source='browser'"
+        ).fetchall()
+        if row[0] is not None
+    }
+
     for places_path in _find_firefox_profiles():
         # Copy to temp in case Firefox is running
         tmp = tempfile.mktemp(suffix=".sqlite")
@@ -243,12 +252,10 @@ def scan_firefox(store, since: Optional[int] = None) -> int:
                 epoch = (row["last_visit_date"] or 0) // 1_000_000
                 dedup = _dedup_key("firefox", url, epoch)
 
-                if store._conn.execute(
-                    "SELECT id FROM events WHERE source='browser' "
-                    "AND json_extract(content,'$.dedup')=?",
-                    (dedup,),
-                ).fetchone():
+                if dedup in existing_dedups:
                     continue
+
+                existing_dedups.add(dedup)
 
                 title = redact_sensitive_text(row["title"] or "")
                 clean_url = redact_sensitive_text(url)
