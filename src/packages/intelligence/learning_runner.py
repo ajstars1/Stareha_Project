@@ -5,16 +5,17 @@ Every call creates a learning_run record for full provenance.
 Rejection feedback raises the confidence threshold for frequently-rejected
 pattern types, so Stareha stops proposing patterns the user ignores.
 """
-import json
 import time
 import uuid
-from typing import Optional
 
 from packages.core.db import Store
-from packages.intelligence.scripts.pattern_extractor import run_all
 from packages.intelligence.ledger import (
-    create_run, complete_run, fail_run, get_rejection_counts,
+    complete_run,
+    create_run,
+    fail_run,
+    get_rejection_counts,
 )
+from packages.intelligence.scripts.pattern_extractor import run_all
 
 LAST_RUN_KEY = "last_learning_run"
 MIN_EVENTS = 5
@@ -36,7 +37,7 @@ def _confidence_bar(rejection_count: int) -> float:
     return 0.0  # no bar if not rejected enough times
 
 
-def _load_events(store: Store, since: Optional[int] = None) -> list[dict]:
+def _load_events(store: Store, since: int | None = None) -> list[dict]:
     q = (
         "SELECT id, type, source, project, content, session_id, created_at "
         "FROM events WHERE 1=1"
@@ -67,8 +68,8 @@ def _enrich_candidates(candidates: list[dict]) -> None:
     Mutates candidates in-place. Silently skips if local LLM unavailable.
     Only enriches command_pattern and error_fix types (scripts output is terse).
     """
-    from packages.intelligence import local_llm
     from packages.core.config import load_config
+    from packages.intelligence import local_llm
     config = load_config()
     if not local_llm.is_available(config.local_llm_base_url):
         return
@@ -87,43 +88,11 @@ def _enrich_candidates(candidates: list[dict]) -> None:
             c["model_used"] = "local_llm"
 
 
-def run_learning(store: Store, *, force: bool = False,
-                 session_id: Optional[str] = None) -> int:
-    """
-    Run pattern extraction, write new candidates.
-    Returns count of candidates written.
-
-    Each call is logged in learning_runs for provenance.
-    Rejection history gates which candidates are accepted.
-    """
-    since_raw = store.get_meta(LAST_RUN_KEY)
-    since = int(since_raw) if since_raw and not force else None
-
-    events = _load_events(store, since)
-    if len(events) < MIN_EVENTS and not force:
-        return 0
-
-    run_id = create_run(store, session_id=session_id)
-
-    try:
-        candidates = run_all(events)
-    except Exception:
-        fail_run(store, run_id)
-        raise
-
-    if not candidates:
-        complete_run(store, run_id, len(events), 0)
-        store.set_meta(LAST_RUN_KEY, str(int(time.time())))
-        return 0
-
-    rejection_counts = get_rejection_counts(store)
-    existing = _existing_dedup_keys(store)
+def _filter_and_write_candidates(store: Store, candidates: list[dict], run_id: str,
+                                 existing: set[tuple], rejection_counts: dict[tuple[str, str], int],
+                                 now: int) -> int:
+    """Filter candidates based on feedback thresholds and write them to DB."""
     written = 0
-    now = int(time.time())
-
-    # Attempt local LLM enrichment if Ollama is available (non-blocking)
-    _enrich_candidates(candidates)
-
     for c in candidates:
         # Feedback gate: skip if confidence is below the bar for this (type, source)
         pair = (c.get("type") or "", c.get("source") or "")
@@ -161,6 +130,48 @@ def run_learning(store: Store, *, force: bool = False,
             ),
         )
         written += 1
+    return written
+
+
+def run_learning(store: Store, *, force: bool = False,
+                 session_id: str | None = None) -> int:
+    """
+    Run pattern extraction, write new candidates.
+    Returns count of candidates written.
+
+    Each call is logged in learning_runs for provenance.
+    Rejection history gates which candidates are accepted.
+    """
+    since_raw = store.get_meta(LAST_RUN_KEY)
+    since = int(since_raw) if since_raw and not force else None
+
+    events = _load_events(store, since)
+    if len(events) < MIN_EVENTS and not force:
+        return 0
+
+    run_id = create_run(store, session_id=session_id)
+
+    try:
+        candidates = run_all(events)
+    except Exception:
+        fail_run(store, run_id)
+        raise
+
+    if not candidates:
+        complete_run(store, run_id, len(events), 0)
+        store.set_meta(LAST_RUN_KEY, str(int(time.time())))
+        return 0
+
+    rejection_counts = get_rejection_counts(store)
+    existing = _existing_dedup_keys(store)
+    now = int(time.time())
+
+    # Attempt local LLM enrichment if Ollama is available (non-blocking)
+    _enrich_candidates(candidates)
+
+    written = _filter_and_write_candidates(
+        store, candidates, run_id, existing, rejection_counts, now
+    )
 
     store._conn.commit()
     complete_run(store, run_id, len(events), written)
